@@ -13,7 +13,8 @@ object ControllerGenerator {
     fun generateControllerContent(
         psiClass: PsiClass,
         controllerPackage: PsiDirectory,
-        useLombok: Boolean
+        useLombok: Boolean,
+        basePath: String = "/api/v1"
     ): String {
         val className = psiClass.name ?: return ""
         val idType = ClassGenerator.getIdType(psiClass)
@@ -30,9 +31,16 @@ object ControllerGenerator {
             "classPackageName" to classPackageName,
             "servicePackage" to servicePackage,
             "dtoPackage" to dtoPackage,
-            "useLombok" to useLombok
+            "useLombok" to useLombok,
+            "basePath" to normalizeBasePath(basePath)
         )
 
         return TemplateEngine.processTemplate("Controller.java.ft", dataModel)
+    }
+
+    // Ensure a single leading slash and no trailing slash; blank means no prefix
+    private fun normalizeBasePath(basePath: String): String {
+        val trimmed = basePath.trim().trim('/')
+        return if (trimmed.isEmpty()) "" else "/$trimmed"
     }
 }

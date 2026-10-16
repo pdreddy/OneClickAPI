@@ -107,7 +107,8 @@ class GenerateApiAction : DumbAwareAction("Generate API") {
                         false, // Image upload is independent
                         false, // PDF upload is independent
                         classOrmType,
-                        generateCrudApi // Pass CRUD flag
+                        generateCrudApi, // Pass CRUD flag
+                        dialog.getBasePath()
                     )
                 }
             }

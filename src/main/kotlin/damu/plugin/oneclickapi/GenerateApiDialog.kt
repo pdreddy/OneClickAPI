@@ -71,6 +71,7 @@ class GenerateApiDialog(
             arrayOf("JPA Repository", "CRUD Repository")
         )
     )
+    private val basePathTextField = JTextField("/api/v1")
     private val useExceptionHandlingCheckBox = JBCheckBox("Add Global Exception Handling")
     private val useLombokCheckBox = JBCheckBox("Use Lombok")
 
@@ -278,6 +279,7 @@ class GenerateApiDialog(
         repositoryTypeComboBox.isVisible = isCrudApiEnabled
         converterTypeComboBox.isVisible = isCrudApiEnabled
         useLombokCheckBox.isVisible = isCrudApiEnabled
+        basePathTextField.isEnabled = isCrudApiEnabled
 
         // Update Add Class button
         addClassButton.isEnabled = isCrudApiEnabled
@@ -348,6 +350,12 @@ class GenerateApiDialog(
 
             row("Lombok:") {
                 cell(useLombokCheckBox)
+            }
+
+            row("Base Path:") {
+                cell(basePathTextField)
+                    .align(AlignX.FILL)
+                    .comment("Controller URL prefix, e.g. /api/v1 gives /api/v1/product")
             }
 
             row {
@@ -460,6 +468,7 @@ class GenerateApiDialog(
     }
 
     fun useExceptionHandling(): Boolean = useExceptionHandlingCheckBox.isSelected
+    fun getBasePath(): String = basePathTextField.text
     fun getPath(): String = classPathTextField.text
     fun getLiquibasePackagePath(): String = liquibasePackagePathTextField.text
     fun getLiquibaseFileName(): String = liquibaseFileNameTextField.text

@@ -205,6 +205,6 @@ object PdfUploadApiGenerator {
                 }
             }
         }
-        return "import javax.servlet.http.HttpServletResponse;" // Default if no Entity annotation found
+        return "import jakarta.servlet.http.HttpServletResponse;" // Default (Spring Boot 3+) if no Entity annotation found
     }
 }

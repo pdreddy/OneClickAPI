@@ -32,8 +32,8 @@ Select multiple classes at once and generate hundreds or even thousands of APIs 
 ## How It Works
 
 1. **Install the plugin** and open your Spring Boot project.
-2. **Right-click on any** `@Entity` **or POJO class**.
-3. Select **"Generate API"** from the context menu.
+2. **Select an** `@Entity` **or POJO class**.
+3. Choose **New → Generate API** (or **Code → Generate → Generate API**, ⌘N / Alt+Insert).
 4. **Configure API options** (enable file upload, DTOs, Liquibase, etc.).
 5. Click **Generate**, and get **production-ready APIs** instantly!
 

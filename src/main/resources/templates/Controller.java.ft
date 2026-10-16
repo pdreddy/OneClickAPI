@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 <#else>
 </#if>
 @RestController
-@RequestMapping("/api/v1/${className?lower_case}")
+@RequestMapping("${basePath}/${className?lower_case}")
 public class ${className}Controller {
 
     <#if !useLombok>

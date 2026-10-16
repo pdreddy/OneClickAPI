@@ -41,7 +41,8 @@ object ClassGenerator {
         generateImageUploadApi: Boolean,
         generatePdfUploadApi: Boolean,
         ormType: String, // "JPA/Hibernate" or "MyBatis"
-        generateCrudApi: Boolean = true // NEW PARAMETER - controls CRUD generation
+        generateCrudApi: Boolean = true, // NEW PARAMETER - controls CRUD generation
+        basePath: String = "/api/v1"
     ) {
         val project = psiClass.project
         val factory = JavaPsiFacade.getInstance(project).elementFactory
@@ -57,7 +58,7 @@ object ClassGenerator {
                     createRepositoryClass(psiClass, factory, directory, repoType, path)
                 }
                 createServiceClass(psiClass, factory, directory, path, useLombok, ormType)
-                createControllerClass(psiClass, factory, directory, path, useLombok)
+                createControllerClass(psiClass, factory, directory, path, useLombok, basePath)
             }
 
             // File upload APIs - independent
@@ -204,7 +205,8 @@ object ClassGenerator {
         factory: PsiElementFactory,
         directory: PsiDirectory,
         packageName: String,
-        useLombok: Boolean
+        useLombok: Boolean,
+        basePath: String
     ) {
         val className = psiClass.name ?: return
         val controllerPackage = PackageUtils.createPackageIfNotExists(directory, "$packageName.controller")
@@ -213,7 +215,7 @@ object ClassGenerator {
             factory,
             controllerPackage,
             "${className}Controller",
-            generateControllerContent(psiClass, controllerPackage, useLombok)
+            generateControllerContent(psiClass, controllerPackage, useLombok, basePath)
         )
     }
 

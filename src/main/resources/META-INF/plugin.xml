@@ -6,44 +6,26 @@
 
     <description>
         <![CDATA[
-        <h2>OneClickAPI - Generate a complete Spring Boot REST API from an @Entity or POJO class in one click. Free.</h2>
-        Generate complete REST APIs with advanced data management capabilities directly from
-        @Entity-annotated or POJO classes with just clicks. Select multiple classes at once,
-        and generate hundreds or even thousands of APIs in seconds!
-
-        Key Features:
-        - Automated API generation from JPA Entity or POJO classes
-        - Auto-creation of DTOs, Mappers, Repositories, Services & Controllers
-        - Lombok integration: Automatic annotations and boilerplate reduction
-        - Smart repository method generation (JPA/Custom implementations)
-        - Clean architecture enforcement with proper package structure
-        - File Upload APIs: Built-in PDF/Image upload endpoints generation
-        - Liquibase integration: Automated database schema management
-        - Enhanced Service Layer architecture for business logic isolation
-        - Robust exception handling: Auto-generated global error controllers
-        - **Multi-Class Selection:** Select hundreds of classes and generate thousands of APIs instantly
-        - **MyBatis Support:** Generate APIs from simple POJO classes in addition to @Entity classes
-        - **Liquibase Support:** Generate database changelogs in YAML or XML
-        - **Advanced Global Exception Handling:** Automatically handles and customizes error responses
-        - **File Upload API Support:** Instantly generate APIs for PDF and image uploads
-        - **Clean Code & Best Practices:** Automatically follows clean architecture principles, ensuring readable, maintainable code
-
-        How It Works:
-        1. Install plugin and right-click any @Entity or POJO class
-        2. Select "Generate API" from context menu
-        3. Configure options (enable file upload support, etc.)
-        4. Get production-ready APIs in seconds!
-
-        Why Choose OneClickAPI:
-        - 80% faster API development cycle
-        - Enterprise-grade code quality out of the box
-        - Future-proof architecture patterns
-        - Customizable templates for special requirements
-        - Seamless file handling capabilities
-        - Reduced maintenance overhead
-        - **Highly customizable:** Ability to tweak templates and adjust generated code based on project needs
-        - **Boosted productivity:** Simplifies complex tasks, letting developers focus on business logic instead of boilerplate code
-    ]]>
+        <h2>OneClickAPI - Generate a complete Spring Boot REST API from an @Entity or POJO class in one click. Free and open source.</h2>
+        <p>Select one or many classes and get DTOs, mappers, repositories, services and controllers in seconds.</p>
+        <h3>Features</h3>
+        <ul>
+            <li>Generate from JPA <code>@Entity</code> classes or plain POJOs (MyBatis)</li>
+            <li>Request/Response DTOs, MapStruct or manual mappers, repositories, services and controllers</li>
+            <li>Multi-class selection: generate APIs for many classes at once</li>
+            <li>Lombok support</li>
+            <li>Liquibase changelogs in XML or YAML</li>
+            <li>Image and PDF upload endpoints</li>
+            <li>Global exception handling</li>
+            <li>Never overwrites existing files</li>
+        </ul>
+        <h3>How to use</h3>
+        <ol>
+            <li>Open a Spring Boot project.</li>
+            <li>Select a class, then use <b>File &gt; New &gt; Generate API</b> or <b>Code &gt; Generate &gt; Generate API</b> (Cmd/Alt+N).</li>
+            <li>Choose your options and click OK.</li>
+        </ol>
+        ]]>
     </description>
 
     <change-notes><![CDATA[
