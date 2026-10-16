@@ -1,0 +1,69 @@
+<idea-plugin>
+    <id>damu.plugin.oneclickapi</id>
+    <name>OneClickAPI</name>
+    <version>1.0.0</version>
+    <vendor email="damup1985@gmail.com">Damohara Reddy Palavali</vendor>
+
+    <description>
+        <![CDATA[
+        <h2>OneClickAPI - Generate a complete Spring Boot REST API from an @Entity or POJO class in one click. Free.</h2>
+        Generate complete REST APIs with advanced data management capabilities directly from
+        @Entity-annotated or POJO classes with just clicks. Select multiple classes at once,
+        and generate hundreds or even thousands of APIs in seconds!
+
+        Key Features:
+        - Automated API generation from JPA Entity or POJO classes
+        - Auto-creation of DTOs, Mappers, Repositories, Services & Controllers
+        - Lombok integration: Automatic annotations and boilerplate reduction
+        - Smart repository method generation (JPA/Custom implementations)
+        - Clean architecture enforcement with proper package structure
+        - File Upload APIs: Built-in PDF/Image upload endpoints generation
+        - Liquibase integration: Automated database schema management
+        - Enhanced Service Layer architecture for business logic isolation
+        - Robust exception handling: Auto-generated global error controllers
+        - **Multi-Class Selection:** Select hundreds of classes and generate thousands of APIs instantly
+        - **MyBatis Support:** Generate APIs from simple POJO classes in addition to @Entity classes
+        - **Liquibase Support:** Generate database changelogs in YAML or XML
+        - **Advanced Global Exception Handling:** Automatically handles and customizes error responses
+        - **File Upload API Support:** Instantly generate APIs for PDF and image uploads
+        - **Clean Code & Best Practices:** Automatically follows clean architecture principles, ensuring readable, maintainable code
+
+        How It Works:
+        1. Install plugin and right-click any @Entity or POJO class
+        2. Select "Generate API" from context menu
+        3. Configure options (enable file upload support, etc.)
+        4. Get production-ready APIs in seconds!
+
+        Why Choose OneClickAPI:
+        - 80% faster API development cycle
+        - Enterprise-grade code quality out of the box
+        - Future-proof architecture patterns
+        - Customizable templates for special requirements
+        - Seamless file handling capabilities
+        - Reduced maintenance overhead
+        - **Highly customizable:** Ability to tweak templates and adjust generated code based on project needs
+        - **Boosted productivity:** Simplifies complex tasks, letting developers focus on business logic instead of boilerplate code
+    ]]>
+    </description>
+
+    <change-notes><![CDATA[
+        <b>1.0.0</b> - First public release as OneClickAPI: free, multi-class selection, JPA and MyBatis, Liquibase (XML/YAML), file upload APIs, global exception handling.
+    ]]></change-notes>
+
+
+    <idea-version since-build="242.0" until-build="262.*"/>
+
+    <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.modules.platform</depends>
+
+    <actions>
+        <action id="damu.plugin.oneclickapi.GenerateApiAction"
+                class="damu.plugin.oneclickapi.GenerateApiAction"
+                text="Generate API"
+                description="Generate code for entity classes">
+            <add-to-group group-id="NewGroup" anchor="last"/>
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+    </actions>
+
+</idea-plugin>

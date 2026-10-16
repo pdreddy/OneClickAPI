@@ -1,0 +1,60 @@
+package ${classPackageName};
+
+<#list importList as import>
+import ${import};
+</#list>
+<#if useLombok>
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+</#if>
+
+<#if useLombok>
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+</#if>
+public class ${className}${classType} {
+
+<#list fields as field>
+    <#if !(classType == "Request" && field.name == "id")>
+    <#if classType == "Request">
+        <#list field.annotations as ann>
+    ${ann}
+        </#list>
+    </#if>
+    private ${field.type} ${field.name};
+    </#if>
+</#list>
+
+<#if !useLombok>
+    <#-- No-Args -->
+    public ${className}${classType}() {
+    }
+
+    <#-- All-Args -->
+    public ${className}${classType}(<#list fields as field><#if !(classType == "Request" && field.name == "id")>${field.type} ${field.name}<#if field?has_next>, </#if></#if></#list>) {
+        <#list fields as field>
+        <#if !(classType == "Request" && field.name == "id")>
+        this.${field.name} = ${field.name};
+        </#if>
+        </#list>
+    }
+
+    <#-- 3. Getter and Setter method -->
+    <#list fields as field>
+        <#if !(classType == "Request" && field.name == "id")>
+
+    public ${field.type} get${field.name?cap_first}() {
+        return ${field.name};
+    }
+
+    public void set${field.name?cap_first}(${field.type} ${field.name}) {
+        this.${field.name} = ${field.name};
+    }
+        </#if>
+    </#list>
+</#if>
+}
