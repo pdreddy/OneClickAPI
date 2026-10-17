@@ -154,7 +154,9 @@ class PreviewDialog(
 
     override fun createCenterPanel(): JComponent {
         val root = JPanel(BorderLayout(0, 6))
-        root.preferredSize = Dimension(1150, 680)
+        // Cap to the screen so the Generate/Cancel buttons at the bottom are never pushed off-screen on small displays.
+        val screen = java.awt.Toolkit.getDefaultToolkit().screenSize
+        root.preferredSize = Dimension(minOf(1150, (screen.width * 0.8).toInt()), minOf(680, (screen.height * 0.6).toInt()))
 
         val top = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0))
         top.add(JBLabel("Files that already exist:"))
