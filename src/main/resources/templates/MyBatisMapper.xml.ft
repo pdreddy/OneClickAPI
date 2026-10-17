@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="${pkg.persistence}.${className}Mapper">
+    <resultMap id="${className}ResultMap" type="${entityFqn}">
+<#list columns as c>
+        <${c.isId?then("id", "result")} property="${c.property}" column="${c.column}"/>
+</#list>
+    </resultMap>
+
+    <select id="findById" resultMap="${className}ResultMap">
+        SELECT * FROM ${table} WHERE ${idColumn} = ${"#"}{${idName}}<#if soft> AND deleted = false</#if>
+    </select>
+
+    <select id="findAll" resultMap="${className}ResultMap">
+        SELECT * FROM ${table}<#if soft> WHERE deleted = false</#if>
+    </select>
+
+    <insert id="insert" parameterType="${entityFqn}"<#if generatedKey> useGeneratedKeys="true" keyProperty="${idName}"</#if>>
+        INSERT INTO ${table} (${insertColumns})
+        VALUES (${insertValues})
+    </insert>
+
+    <update id="update" parameterType="${entityFqn}">
+        UPDATE ${table}
+        SET ${updateAssignments}
+        WHERE ${idColumn} = ${"#"}{${idName}}
+    </update>
+<#if soft>
+
+    <update id="delete">
+        UPDATE ${table} SET deleted = true WHERE ${idColumn} = ${"#"}{${idName}}
+    </update>
+<#else>
+
+    <delete id="delete">
+        DELETE FROM ${table} WHERE ${idColumn} = ${"#"}{${idName}}
+    </delete>
+</#if>
+<#if pagination>
+
+    <sql id="filterConditions">
+        <where>
+<#if soft>
+            deleted = false
+</#if>
+<#if searchable?size gt 0>
+            <if test="filter != null and filter.q != null and filter.q != ''">
+                AND (<#list searchable as s>LOWER(${s.column}) LIKE CONCAT('%', LOWER(${"#"}{filter.q}), '%')<#sep> OR </#sep></#list>)
+            </if>
+</#if>
+<#list filterFields as f>
+<#if f.mode == "STRING">
+            <if test="filter != null and filter.${f.name} != null and filter.${f.name} != ''">
+                AND LOWER(${f.column}) LIKE CONCAT('%', LOWER(${"#"}{filter.${f.name}}), '%')
+            </if>
+<#else>
+            <if test="filter != null and filter.${f.name} != null">
+                AND ${f.column} = ${"#"}{filter.${f.name}}
+            </if>
+</#if>
+</#list>
+        </where>
+    </sql>
+
+    <select id="findPage" resultMap="${className}ResultMap">
+        SELECT * FROM ${table}
+        <include refid="filterConditions"/>
+        ORDER BY ${"$"}{sortColumn} ${"$"}{sortDirection}
+        LIMIT ${"#"}{limit} OFFSET ${"#"}{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM ${table}
+        <include refid="filterConditions"/>
+    </select>
+</#if>
+
+    <!-- region custom code (kept when you regenerate) -->
+    <!-- endregion -->
+</mapper>

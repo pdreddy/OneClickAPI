@@ -1,51 +1,85 @@
 <idea-plugin>
-    <id>damu.plugin.oneclickapi</id>
+    <id>az.mtech.autoapigen</id>
     <name>OneClickAPI</name>
-    <version>1.0.1</version>
-    <vendor email="damup1985@gmail.com">Damodhara Reddy Palavali</vendor>
+    <version>2026091.7</version>
+    <vendor email="musanebiyev@gmail.com">Technovation Company</vendor>
 
     <description>
         <![CDATA[
-        <h2>OneClickAPI - Generate a complete Spring Boot REST API from an @Entity or POJO class in one click. Free and open source.</h2>
-        <p>Select one or many classes and get DTOs, mappers, repositories, services and controllers in seconds.</p>
-        <h3>Features</h3>
-        <ul>
-            <li>Generate from JPA <code>@Entity</code> classes or plain POJOs (MyBatis)</li>
-            <li>Request/Response DTOs, MapStruct or manual mappers, repositories, services and controllers</li>
-            <li>Multi-class selection: generate APIs for many classes at once</li>
-            <li>Lombok support</li>
-            <li>Liquibase changelogs in XML or YAML</li>
-            <li>Image and PDF upload endpoints</li>
-            <li>Global exception handling</li>
-            <li>Never overwrites existing files</li>
-        </ul>
-        <h3>How to use</h3>
-        <ol>
-            <li>Open a Spring Boot project.</li>
-            <li>Select a class, then use <b>File &gt; New &gt; Generate API</b> or <b>Code &gt; Generate &gt; Generate API</b> (Cmd/Alt+N).</li>
-            <li>Choose your options and click OK.</li>
-        </ol>
-        ]]>
+        <h2>OneClickAPI - A powerful IntelliJ IDEA plugin that revolutionizes
+        API development for Spring Boot projects.</h2>
+        Generate complete REST APIs with advanced data management capabilities directly from
+        @Entity-annotated or POJO classes with just clicks. Select multiple classes at once,
+        and generate hundreds or even thousands of APIs in seconds!
+
+        New:
+        - Preview Before Generate: every file, its package and a diff before anything is written
+        - Safe re-generation: Skip / Replace / Merge per file, custom-code regions are kept, generation report
+        - JUnit 5 + Mockito + MockMvc tests and IntelliJ .http request files generated with the backend
+        - Springdoc / OpenAPI annotations and an OpenAPI 3 spec
+        - API standards: Bean Validation, pagination/sorting/filtering/search, standard response and error format,
+          soft delete, audit fields, API versioning, relations as ids (no circular DTOs)
+        - Team presets in .oneclickapi.yml (Standard Spring Boot CRUD, Clean Architecture, Enterprise API, MyBatis Backend)
+        - Project detection (Maven/Gradle, Spring Boot version, JPA/MyBatis, MapStruct, Lombok, Liquibase/Flyway) with
+          optional dependency additions
+        - Works with IntelliJ IDEA 2024.2 and every newer release
+
+        Key Features:
+        - Automated API generation from JPA Entity or POJO classes
+        - Auto-creation of DTOs, Mappers, Repositories, Services & Controllers
+        - Lombok integration: Automatic annotations and boilerplate reduction
+        - Smart repository method generation (JPA/Custom implementations)
+        - Clean architecture enforcement with proper package structure
+        - File Upload APIs: Built-in PDF/Image upload endpoints generation
+        - Liquibase integration: Automated database schema management
+        - Enhanced Service Layer architecture for business logic isolation
+        - Robust exception handling: Auto-generated global error controllers
+        - **Multi-Class Selection:** Select hundreds of classes and generate thousands of APIs instantly
+        - **MyBatis Support:** Generate APIs from simple POJO classes in addition to @Entity classes
+        - **Liquibase Flexibility:** Generate database schemas in YAML, SQL, XML, or JSON formats
+        - **Advanced Global Exception Handling:** Automatically handles and customizes error responses
+        - **File Upload API Support:** Instantly generate APIs for PDF and image uploads
+        - **Clean Code & Best Practices:** Automatically follows clean architecture principles, ensuring readable, maintainable code
+
+        How It Works:
+        1. Install plugin and right-click any @Entity or POJO class
+        2. Select "Generate API" from context menu
+        3. Configure options (enable file upload support, etc.)
+        4. Get production-ready APIs in seconds!
+
+        Why Choose OneClickAPI:
+        - 80% faster API development cycle
+        - Enterprise-grade code quality out of the box
+        - Future-proof architecture patterns
+        - Customizable templates for special requirements
+        - Seamless file handling capabilities
+        - Reduced maintenance overhead
+        - **Highly customizable:** Ability to tweak templates and adjust generated code based on project needs
+        - **Boosted productivity:** Simplifies complex tasks, letting developers focus on business logic instead of boilerplate code
+    ]]>
     </description>
 
-    <change-notes><![CDATA[
-        <b>1.0.1</b> - Broader IDE compatibility (no upper build limit), service/mapper generation fixes, ORM Type selector, base path option, Liquibase JSON/SQL.<br/><b>1.0.0</b> - First public release as OneClickAPI: free, multi-class selection, JPA and MyBatis, Liquibase (XML/YAML), file upload APIs, global exception handling.
-    ]]></change-notes>
 
-
-    <idea-version since-build="242"/>
+    <!-- idea-version (since/until build) is written by patchPluginXml from build.gradle.kts -->
 
     <depends>com.intellij.modules.java</depends>
     <depends>com.intellij.modules.platform</depends>
 
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="OneClickAPI" displayType="BALLOON"/>
+    </extensions>
+
     <actions>
-        <action id="damu.plugin.oneclickapi.GenerateApiAction"
-                class="damu.plugin.oneclickapi.GenerateApiAction"
+        <action id="az.mtech.autoapigen.GenerateApiAction"
+                class="az.mtech.autoapigen.GenerateApiAction"
                 text="Generate API"
                 description="Generate code for entity classes">
             <add-to-group group-id="NewGroup" anchor="last"/>
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
     </actions>
+
+    <!--     Product Descriptor for Paid Plugin -->
+<!--    <product-descriptor code="PAUTOAPIGENERAT" release-date="20260917" release-version="20260917"/>-->
 
 </idea-plugin>

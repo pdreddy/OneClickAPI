@@ -1,0 +1,42 @@
+### Create ${className}
+POST {{host}}${basePath}
+Content-Type: application/json
+<#if versionHeader??>
+${versionHeader}: ${apiVersion}
+</#if>
+
+${requestJson}
+
+> {%
+    client.test("${className} created", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("${varName}Id", response.body${dataAccess}.${idName});
+%}
+
+### Get ${className} by id
+GET {{host}}${basePath}/{{${varName}Id}}
+<#if versionHeader??>
+${versionHeader}: ${apiVersion}
+</#if>
+
+### List ${className}s
+GET {{host}}${basePath}<#if pagination>?page=0&size=20&sort=${idName},asc</#if>
+<#if versionHeader??>
+${versionHeader}: ${apiVersion}
+</#if>
+
+### Update ${className}
+PUT {{host}}${basePath}/{{${varName}Id}}
+Content-Type: application/json
+<#if versionHeader??>
+${versionHeader}: ${apiVersion}
+</#if>
+
+${requestJson}
+
+### Delete ${className}
+DELETE {{host}}${basePath}/{{${varName}Id}}
+<#if versionHeader??>
+${versionHeader}: ${apiVersion}
+</#if>

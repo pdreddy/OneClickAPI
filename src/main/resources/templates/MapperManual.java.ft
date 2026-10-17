@@ -1,0 +1,44 @@
+package ${classPackageName};
+
+import ${entityFqn};
+import ${pkg.dtoReq}.${className}Request;
+import ${pkg.dtoResp}.${className}Response;
+import org.springframework.stereotype.Component;
+<#if usesCollectors>
+import java.util.stream.Collectors;
+</#if>
+
+@Component
+public class ${mapperName} {
+
+    public ${className}Response toResponse(${className} entity) {
+        if (entity == null) {
+            return null;
+        }
+        ${className}Response response = new ${className}Response();
+<#list responseAssignments as a>
+        ${a}
+</#list>
+        return response;
+    }
+
+    public ${className} toEntity(${className}Request dto) {
+        if (dto == null) {
+            return null;
+        }
+        ${className} entity = new ${className}();
+        updateFromDto(dto, entity);
+        return entity;
+    }
+
+    public void updateFromDto(${className}Request dto, ${className} entity) {
+        if (dto == null) {
+            return;
+        }
+<#list requestAssignments as a>
+        ${a}
+</#list>
+    }
+
+${customRegion}
+}

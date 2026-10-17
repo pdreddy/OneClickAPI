@@ -1,0 +1,156 @@
+package ${classPackageName};
+
+import ${pkg.service}.${className}Service;
+import ${pkg.dtoReq}.${className}Request;
+import ${pkg.dtoResp}.${className}Response;
+<#if pagination>
+import ${pkg.dtoRoot}.PageResponse;
+</#if>
+<#if wrap>
+import ${pkg.exception}.GlobalExceptionHandler;
+import ${pkg.exception}.ResourceNotFoundException;
+</#if>
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.util.List;
+<#if !wrap>
+import java.util.Optional;
+</#if>
+
+import static org.mockito.ArgumentMatchers.any;
+<#if pagination>
+import static org.mockito.ArgumentMatchers.anyInt;
+</#if>
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** Standalone MockMvc test: no Spring context, so it runs in milliseconds and works on any Spring Boot version. */
+@ExtendWith(MockitoExtension.class)
+class ${className}ControllerTest {
+
+    private static final String URL = "${basePath}";
+    private static final ${idType} ID = ${idSample};
+    private static final String VALID_REQUEST = "${requestJson}";
+
+    @Mock
+    private ${className}Service service;
+
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(new ${className}Controller(service))
+<#if wrap>
+                .setControllerAdvice(new GlobalExceptionHandler())
+</#if>
+                .build();
+    }
+
+    private ${className}Response sampleResponse() {
+        ${className}Response response = new ${className}Response();
+<#list responseSetters as s>
+        ${s}
+</#list>
+        return response;
+    }
+
+    @Test
+    void create_returnsCreated() throws Exception {
+        when(service.save(any(${className}Request.class))).thenReturn(sampleResponse());
+
+        mockMvc.perform(post(URL)<#if versionHeader??>
+                        .header("${versionHeader}", "${apiVersion}")</#if>
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_REQUEST))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("${itemPath}${idName}").value(${idJson}));
+    }
+<#if hasRequiredFields>
+
+    @Test
+    void create_withInvalidBody_returnsBadRequest() throws Exception {
+        mockMvc.perform(post(URL)<#if versionHeader??>
+                        .header("${versionHeader}", "${apiVersion}")</#if>
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+</#if>
+
+    @Test
+    void findById_returnsOk() throws Exception {
+<#if wrap>
+        when(service.findById(ID)).thenReturn(sampleResponse());
+<#else>
+        when(service.findById(ID)).thenReturn(Optional.of(sampleResponse()));
+</#if>
+
+        mockMvc.perform(get(URL + "/{id}", ID)<#if versionHeader??>
+                        .header("${versionHeader}", "${apiVersion}")</#if>)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${itemPath}${idName}").value(${idJson}));
+    }
+
+    @Test
+    void findById_whenMissing_returnsNotFound() throws Exception {
+<#if wrap>
+        when(service.findById(ID)).thenThrow(new ResourceNotFoundException("${className}", ID));
+<#else>
+        when(service.findById(ID)).thenReturn(Optional.empty());
+</#if>
+
+        mockMvc.perform(get(URL + "/{id}", ID)<#if versionHeader??>
+                        .header("${versionHeader}", "${apiVersion}")</#if>)
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void findAll_returnsOk() throws Exception {
+<#if pagination>
+        when(service.findAll(any(), anyInt(), anyInt(), any()))
+                .thenReturn(PageResponse.of(List.of(sampleResponse()), 0, 20, 1));
+<#else>
+        when(service.findAll()).thenReturn(List.of(sampleResponse()));
+</#if>
+
+        mockMvc.perform(get(URL)<#if versionHeader??>
+                        .header("${versionHeader}", "${apiVersion}")</#if>)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${listPath}${idName}").value(${idJson}));
+    }
+
+    @Test
+    void update_returnsOk() throws Exception {
+        when(service.update(eq(ID), any(${className}Request.class))).thenReturn(sampleResponse());
+
+        mockMvc.perform(put(URL + "/{id}", ID)<#if versionHeader??>
+                        .header("${versionHeader}", "${apiVersion}")</#if>
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_REQUEST))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${itemPath}${idName}").value(${idJson}));
+    }
+
+    @Test
+    void delete_returnsNoContent() throws Exception {
+        mockMvc.perform(delete(URL + "/{id}", ID)<#if versionHeader??>
+                        .header("${versionHeader}", "${apiVersion}")</#if>)
+                .andExpect(status().isNoContent());
+
+        verify(service).delete(ID);
+    }
+}

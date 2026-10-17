@@ -1,0 +1,205 @@
+package ${classPackageName};
+
+<#if jpa>
+import ${pkg.repository}.${className}Repository;
+import ${pkg.mapper}.${mapperName};
+<#else>
+import ${pkg.persistence}.${className}Mapper;
+import ${pkg.mapper}.${dtoMapperName};
+</#if>
+import ${entityFqn};
+import ${pkg.dtoReq}.${className}Request;
+import ${pkg.dtoResp}.${className}Response;
+<#if wrap>
+import ${pkg.exception}.ResourceNotFoundException;
+</#if>
+<#if pagination>
+import ${pkg.dtoReq}.${className}Filter;
+import ${pkg.dtoRoot}.PageResponse;
+<#if jpa>
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+</#if>
+</#if>
+<#if jpa && relations?size gt 0>
+import ${persistencePkg}.EntityManager;
+</#if>
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+<#if jpa || !wrap>
+import java.util.Optional;
+</#if>
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+<#if pagination && !jpa>
+import static org.mockito.ArgumentMatchers.anyInt;
+</#if>
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class ${className}ServiceTest {
+
+    private static final ${idType} ID = ${idSample};
+
+<#if jpa>
+    @Mock
+    private ${className}Repository repository;
+
+    @Mock
+    private ${mapperName} mapper;
+
+<#if relations?size gt 0>
+    @Mock
+    private EntityManager entityManager;
+
+</#if>
+<#else>
+    @Mock
+    private ${className}Mapper mapper;
+
+    @Mock
+    private ${dtoMapperName} dtoMapper;
+
+</#if>
+    @InjectMocks
+    private ${className}Service service;
+
+<#assign conv = jpa?then("mapper", "dtoMapper")>
+<#assign load = jpa?then("repository.findById(ID)", "mapper.findById(ID)")>
+<#macro found>
+<#if jpa>Optional.of(entity)<#else>entity</#if></#macro>
+    @Test
+    void findById_returnsMappedResponse() {
+        ${className} entity = new ${className}();
+        ${className}Response response = new ${className}Response();
+        when(${load}).thenReturn(<@found/>);
+        when(${conv}.toResponse(entity)).thenReturn(response);
+
+<#if wrap>
+        assertThat(service.findById(ID)).isSameAs(response);
+<#else>
+        assertThat(service.findById(ID)).contains(response);
+</#if>
+    }
+
+    @Test
+    void findById_whenMissing_${wrap?then("throwsNotFound", "returnsEmpty")}() {
+        when(${load}).thenReturn(<#if jpa>Optional.empty()<#else>null</#if>);
+
+<#if wrap>
+        assertThatThrownBy(() -> service.findById(ID)).isInstanceOf(ResourceNotFoundException.class);
+<#else>
+        assertThat(service.findById(ID)).isEmpty();
+</#if>
+    }
+
+<#if pagination>
+    @Test
+    void findAll_returnsPage() {
+        ${className} entity = new ${className}();
+        ${className}Response response = new ${className}Response();
+<#if jpa>
+        when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(entity)));
+<#else>
+        when(mapper.findPage(any(), anyInt(), anyInt(), any(), any())).thenReturn(List.of(entity));
+        when(mapper.count(any())).thenReturn(1L);
+</#if>
+        when(${conv}.toResponse(entity)).thenReturn(response);
+
+        PageResponse<${className}Response> page = service.findAll(new ${className}Filter(), 0, 10, null);
+
+        assertThat(page.getContent()).containsExactly(response);
+        assertThat(page.getTotalElements()).isEqualTo(1);
+    }
+<#else>
+    @Test
+    void findAll_returnsMappedResponses() {
+        ${className} entity = new ${className}();
+        ${className}Response response = new ${className}Response();
+        when(${jpa?then("repository", "mapper")}.findAll()).thenReturn(List.of(entity));
+        when(${conv}.toResponse(entity)).thenReturn(response);
+
+        assertThat(service.findAll()).containsExactly(response);
+    }
+</#if>
+
+    @Test
+    void save_mapsPersistsAndReturnsResponse() {
+        ${className}Request request = new ${className}Request();
+        ${className} entity = new ${className}();
+        ${className}Response response = new ${className}Response();
+        when(${conv}.toEntity(request)).thenReturn(entity);
+<#if jpa>
+        when(repository.save(entity)).thenReturn(entity);
+</#if>
+        when(${conv}.toResponse(entity)).thenReturn(response);
+
+        assertThat(service.save(request)).isSameAs(response);
+<#if jpa>
+        verify(repository).save(entity);
+<#else>
+        verify(mapper).insert(entity);
+</#if>
+    }
+
+    @Test
+    void update_appliesRequestToExistingEntity() {
+        ${className}Request request = new ${className}Request();
+        ${className} entity = new ${className}();
+        ${className}Response response = new ${className}Response();
+        when(${load}).thenReturn(<@found/>);
+<#if jpa>
+        when(repository.save(entity)).thenReturn(entity);
+</#if>
+        when(${conv}.toResponse(entity)).thenReturn(response);
+
+        assertThat(service.update(ID, request)).isSameAs(response);
+        verify(${conv}).updateFromDto(request, entity);
+    }
+
+    @Test
+    void update_whenMissing_fails() {
+        when(${load}).thenReturn(<#if jpa>Optional.empty()<#else>null</#if>);
+
+        assertThatThrownBy(() -> service.update(ID, new ${className}Request()))
+                .isInstanceOf(${wrap?then("ResourceNotFoundException", "RuntimeException")}.class);
+    }
+
+    @Test
+    void delete_${soft?then("marksAsDeleted", "removesEntity")}() {
+<#if soft && jpa>
+        ${className} entity = new ${className}();
+        when(repository.findById(ID)).thenReturn(Optional.of(entity));
+
+        service.delete(ID);
+
+        assertThat(${entityDeleted}).isTrue();
+        verify(repository).save(entity);
+<#elseif jpa>
+<#if wrap>
+        when(repository.existsById(ID)).thenReturn(true);
+
+</#if>
+        service.delete(ID);
+
+        verify(repository).deleteById(ID);
+<#else>
+<#if wrap>
+        when(mapper.findById(ID)).thenReturn(new ${className}());
+
+</#if>
+        service.delete(ID);
+
+        verify(mapper).delete(ID);
+</#if>
+    }
+}

@@ -6,7 +6,7 @@ Follow the steps below to install the **OneClickAPI** plugin for **IntelliJ IDEA
 
 Before you begin the installation, make sure you meet the following prerequisites:
 
-- **IntelliJ IDEA** (version 231.9000 or higher)
+- **IntelliJ IDEA 2024.2 (build 242) or newer**, including the 2025.x and 2026.x releases. The plugin has no upper version limit.
 - **Spring Boot** project setup
 
 ---

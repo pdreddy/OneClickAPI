@@ -1,0 +1,57 @@
+package ${classPackageName};
+
+<#list imports as import>
+import ${import};
+</#list>
+
+<#if lombok>
+@Data
+@NoArgsConstructor
+</#if>
+public class ${className}Filter {
+
+<#if searchable?size gt 0>
+    /** Free-text search over: ${searchable?join(", ")}. */
+    private String q;
+
+</#if>
+<#list fields as f>
+    private ${f.type} ${f.name};
+
+</#list>
+<#if !lombok>
+<#if searchable?size gt 0>
+    public String getQ() {
+        return q;
+    }
+
+    public void setQ(String q) {
+        this.q = q;
+    }
+
+</#if>
+<#list fields as f>
+    public ${f.type} ${f.getter}() {
+        return ${f.name};
+    }
+
+    public void ${f.setter}(${f.type} ${f.name}) {
+        this.${f.name} = ${f.name};
+    }
+
+</#list>
+</#if>
+    @Override
+    public String toString() {
+        return "${className}Filter{"
+<#if searchable?size gt 0>
+                + "q=" + q
+</#if>
+<#list fields as f>
+                + "<#if f?index gt 0 || searchable?size gt 0>, </#if>${f.name}=" + ${f.name}
+</#list>
+                + "}";
+    }
+
+${customRegion}
+}

@@ -1,0 +1,35 @@
+package ${classPackageName};
+
+import ${entityFqn};
+<#if pagination>
+import ${pkg.dtoReq}.${className}Filter;
+import org.apache.ibatis.annotations.Param;
+</#if>
+import org.apache.ibatis.annotations.Mapper;
+import java.util.List;
+
+@Mapper
+public interface ${className}Mapper {
+
+    ${className} findById(${idType} id);
+
+    List<${className}> findAll();
+
+    void insert(${className} entity);
+
+    void update(${className} entity);
+
+    void delete(${idType} id);
+<#if pagination>
+
+    List<${className}> findPage(@Param("filter") ${className}Filter filter,
+                                @Param("offset") int offset,
+                                @Param("limit") int limit,
+                                @Param("sortColumn") String sortColumn,
+                                @Param("sortDirection") String sortDirection);
+
+    long count(@Param("filter") ${className}Filter filter);
+</#if>
+
+${customRegion}
+}

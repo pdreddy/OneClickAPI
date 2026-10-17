@@ -1,60 +1,52 @@
 package ${classPackageName};
 
-<#list importList as import>
+<#list imports as import>
 import ${import};
 </#list>
-<#if useLombok>
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-</#if>
 
-<#if useLombok>
+<#if lombok>
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 </#if>
-public class ${className}${classType} {
-
-<#list fields as field>
-    <#if !(classType == "Request" && field.name == "id")>
-    <#if classType == "Request">
-        <#list field.annotations as ann>
-    ${ann}
-        </#list>
-    </#if>
-    private ${field.type} ${field.name};
-    </#if>
-</#list>
-
-<#if !useLombok>
-    <#-- No-Args -->
-    public ${className}${classType}() {
-    }
-
-    <#-- All-Args -->
-    public ${className}${classType}(<#list fields as field><#if !(classType == "Request" && field.name == "id")>${field.type} ${field.name}<#if field?has_next>, </#if></#if></#list>) {
-        <#list fields as field>
-        <#if !(classType == "Request" && field.name == "id")>
-        this.${field.name} = ${field.name};
-        </#if>
-        </#list>
-    }
-
-    <#-- 3. Getter and Setter method -->
-    <#list fields as field>
-        <#if !(classType == "Request" && field.name == "id")>
-
-    public ${field.type} get${field.name?cap_first}() {
-        return ${field.name};
-    }
-
-    public void set${field.name?cap_first}(${field.type} ${field.name}) {
-        this.${field.name} = ${field.name};
-    }
-        </#if>
-    </#list>
+<#if openApi>
+@Schema(description = "${description}")
 </#if>
+public class ${dtoClass} {
+
+<#list fields as f>
+<#list f.annotations as a>
+    ${a}
+</#list>
+<#if openApi && f.example??>
+    @Schema(example = "${f.example}")
+</#if>
+    private ${f.type} ${f.name};
+
+</#list>
+<#if !lombok>
+    public ${dtoClass}() {
+    }
+
+<#if fields?size gt 0>
+    public ${dtoClass}(<#list fields as f>${f.type} ${f.name}<#sep>, </#sep></#list>) {
+<#list fields as f>
+        this.${f.name} = ${f.name};
+</#list>
+    }
+
+</#if>
+<#list fields as f>
+    public ${f.type} ${f.getter}() {
+        return ${f.name};
+    }
+
+    public void ${f.setter}(${f.type} ${f.name}) {
+        this.${f.name} = ${f.name};
+    }
+
+</#list>
+</#if>
+${customRegion}
 }

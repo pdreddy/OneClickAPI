@@ -1,0 +1,199 @@
+openapi: 3.0.3
+info:
+  title: ${title}
+  version: "${version}"
+tags:
+  - name: ${className}
+paths:
+  ${basePath}:
+    get:
+      tags: [${className}]
+      summary: List ${className}s
+      operationId: list${className}s
+<#if pagination>
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: sort
+          in: query
+          description: "Property and direction, e.g. ${idName},desc. Allowed: ${sortable?join(', ')}"
+          schema: { type: string }
+<#if searchable?size gt 0>
+        - name: q
+          in: query
+          description: "Free-text search over ${searchable?join(', ')}"
+          schema: { type: string }
+</#if>
+<#list filterParams as p>
+        - name: ${p.name}
+          in: query
+          schema: { type: ${p.type}<#if p.format??>, format: ${p.format}</#if> }
+</#list>
+</#if>
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+<#if listRef??>
+                $ref: "#/components/schemas/${listRef}"
+<#else>
+                type: array
+                items:
+                  $ref: "#/components/schemas/${className}Response"
+</#if>
+    post:
+      tags: [${className}]
+      summary: Create a ${className}
+      operationId: create${className}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/${className}Request"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/${itemSchema}"
+        "400":
+          description: Validation failed
+<#if wrap>
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+</#if>
+  ${basePath}/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: ${idOpenApiType}<#if idOpenApiFormat??>, format: ${idOpenApiFormat}</#if> }
+    get:
+      tags: [${className}]
+      summary: Get a ${className} by id
+      operationId: get${className}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/${itemSchema}"
+        "404":
+          description: Not found
+    put:
+      tags: [${className}]
+      summary: Update a ${className}
+      operationId: update${className}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/${className}Request"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/${itemSchema}"
+        "400":
+          description: Validation failed
+        "404":
+          description: Not found
+    delete:
+      tags: [${className}]
+      summary: Delete a ${className}
+      operationId: delete${className}
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+components:
+  schemas:
+    ${className}Request:
+      type: object
+<#if requiredProps?size gt 0>
+      required: [${requiredProps?join(", ")}]
+</#if>
+      properties:
+<#list requestProps as p>
+        ${p.name}:
+<#list p.lines as l>
+          ${l}
+</#list>
+</#list>
+    ${className}Response:
+      type: object
+      properties:
+<#list responseProps as p>
+        ${p.name}:
+<#list p.lines as l>
+          ${l}
+</#list>
+</#list>
+<#if pagination>
+    Page${className}Response:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/${className}Response"
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+</#if>
+<#if wrap>
+    ApiResult${className}Response:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string, nullable: true }
+        timestamp: { type: string, format: date-time }
+        data:
+          $ref: "#/components/schemas/${className}Response"
+    ${listRef}:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string, nullable: true }
+        timestamp: { type: string, format: date-time }
+        data:
+<#if pagination>
+          $ref: "#/components/schemas/Page${className}Response"
+<#else>
+          type: array
+          items:
+            $ref: "#/components/schemas/${className}Response"
+</#if>
+    ApiError:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        error: { type: string }
+        message: { type: string }
+        path: { type: string }
+        errors:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+</#if>
