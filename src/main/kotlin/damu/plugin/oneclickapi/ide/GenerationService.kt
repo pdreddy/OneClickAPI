@@ -14,6 +14,10 @@ import damu.plugin.oneclickapi.core.write.GenerationReport
 import damu.plugin.oneclickapi.core.write.PlanExecutor
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ex.ActionUtil
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
@@ -94,11 +98,28 @@ object GenerationService {
             excluded = dialog.excludedPaths()
         }
 
-        return WriteCommandAction.writeCommandAction(project)
+        val report = WriteCommandAction.writeCommandAction(project)
             .withName("Generate API")
             .compute<GenerationReport, RuntimeException> {
                 PlanExecutor(files).execute(allFiles, policyFor, excluded, warnings)
             }
+        // New dependencies (e.g. springdoc) were written to pom.xml / build.gradle: reload the build so the IDE
+        // resolves their imports instead of showing red until the user syncs by hand.
+        if (allFiles.any { it.kind == FileKind.BUILD && it.path !in excluded }) reloadBuild(project)
+        return report
+    }
+
+    private fun reloadBuild(project: Project) {
+        ApplicationManager.getApplication().invokeLater {
+            val actions = ActionManager.getInstance()
+            val action = listOf("ExternalSystem.RefreshAllProjects", "Maven.ReimportProject")
+                .firstNotNullOfOrNull { actions.getAction(it) } ?: return@invokeLater
+            try {
+                ActionUtil.invokeAction(action, SimpleDataContext.getProjectContext(project), "OneClickAPI", null, null)
+            } catch (e: Exception) {
+                notify(project, "Dependencies were added; reload the Gradle/Maven project to resolve them.", NotificationType.INFORMATION)
+            }
+        }
     }
 
     private fun addDependencyEdit(
