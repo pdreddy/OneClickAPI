@@ -90,7 +90,7 @@ object GenerationService {
 
         val warnings = plan.warnings.toMutableList()
         val allFiles = dropDuplicateSharedClasses(plan.files, moduleDir, warnings).toMutableList()
-        addDependencyEdit(models, options, profile, files, preview, allFiles, warnings)
+        addDependencyEdit(models, options, profile, files, allFiles, warnings)
 
         var policyFor: (PlannedFile) -> ConflictPolicy = { options.conflictPolicy }
         var excluded: Set<String> = emptySet()
@@ -147,7 +147,6 @@ object GenerationService {
         options: GenerationOptions,
         profile: damu.plugin.oneclickapi.core.project.ProjectProfile,
         files: IdeProjectFiles,
-        preview: Boolean,
         out: MutableList<PlannedFile>,
         warnings: MutableList<String>
     ) {
@@ -160,10 +159,7 @@ object GenerationService {
             warnings += "Missing in the build: $names. No pom.xml or build.gradle(.kts) found in the module, add them by hand."
             return
         }
-        if (!preview) {
-            warnings += "Missing in the build: $names. Turn on the preview to have them added to $buildFile."
-            return
-        }
+        // Without the preview the edit is still made: the user asked for these options, and the report lists the build file.
         try {
             val text = files.read(buildFile) ?: return
             var updated = BuildFileEditor.addDependencies(profile.buildTool, text, missing.flatMap { it.dependencies })
@@ -172,8 +168,11 @@ object GenerationService {
                 out.add(0, PlannedFile(buildFile, updated, FileKind.BUILD, "Adds to the build: $names", "build", ConflictPolicy.REPLACE))
             }
             if (coverage) {
-                val report = if (profile.buildTool == BuildTool.MAVEN) "target/site/jacoco/index.html" else "build/reports/jacoco/test/html/index.html"
-                warnings += "Coverage: run the tests (${if (profile.buildTool == BuildTool.MAVEN) "mvn test" else "./gradlew test"}) and open $report."
+                val maven = profile.buildTool == BuildTool.MAVEN
+                val html = if (maven) "target/site/jacoco/index.html" else "build/reports/jacoco/test/html/index.html"
+                val xml = if (maven) "target/site/jacoco/jacoco.xml" else "build/reports/jacoco/test/jacocoTestReport.xml"
+                warnings += "Coverage: run ${if (maven) "mvn test" else "./gradlew test"} and open $html for the whole module. " +
+                    "SonarQube reads $xml (sonar.coverage.jacoco.xmlReportPaths)."
             }
         } catch (e: BuildFileEditor.EditException) {
             warnings += "Missing in the build: $names. Could not edit $buildFile (${e.message}); add them by hand."
