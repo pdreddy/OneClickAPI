@@ -76,6 +76,8 @@
                 description="Generate code for entity classes">
             <add-to-group group-id="NewGroup" anchor="last"/>
             <add-to-group group-id="GenerateGroup" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="NewGroup"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
     </actions>
 
