@@ -15,6 +15,7 @@ dependencies {
 }
 tasks.test {
     systemProperty("generated.dir", rootDir.resolve("../build/generated").canonicalPath)
+    systemProperty("jacoco.dir", rootDir.resolve("../build/jacoco-builds").canonicalPath)
     testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
 }
 

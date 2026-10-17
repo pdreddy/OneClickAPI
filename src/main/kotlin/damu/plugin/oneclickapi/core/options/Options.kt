@@ -84,7 +84,9 @@ data class TestOptions(
     /** JUnit 5 test of the entity <-> DTO mapper (MapStruct or manual), relation ids included. */
     val mapperTests: Boolean = false,
     /** Full-stack API test per JPA entity: real controller, service, repository and an in-memory H2 database. */
-    val integrationTests: Boolean = false
+    val integrationTests: Boolean = false,
+    /** Add JaCoCo to the build file so `test` also writes a coverage report. */
+    val coverage: Boolean = false
 ) {
     val any: Boolean get() = serviceTests || controllerTests || httpFile || mapperTests || integrationTests
 

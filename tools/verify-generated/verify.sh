@@ -11,7 +11,7 @@ gradlew="$here/../../gradlew"
 gen="$here/build/generated"
 rm -rf "$gen"
 
-"$gradlew" -p "$here/core" test -q || { echo "plugin core tests FAILED"; exit 1; }
+"$gradlew" -p "$here/core" cleanTest test -q || { echo "plugin core tests FAILED"; exit 1; }
 echo "plugin core tests passed"
 
 for d in "$gen"/*/; do
@@ -28,7 +28,10 @@ for d in "$gen"/*/; do
   tests=$(cat "$r"/*.xml 2>/dev/null | grep -o ' tests="[0-9]*"' | awk -F'"' '{s+=$2} END {print s+0}')
   failed=$(cat "$r"/*.xml 2>/dev/null | grep -o 'failures="[0-9]*"\|errors="[0-9]*"' | awk -F'"' '{s+=$2} END {print s+0}')
   if [ "$tests" = 0 ] || [ "$failed" != 0 ]; then status=1; mark=FAIL; else mark=ok; fi
-  printf '%-45s %4s tests %3s failed  %s\n' "$(basename "$d")" "$tests" "$failed" "$mark"
+  csv="$d/build/reports/jacoco/test/jacocoTestReport.csv"
+  cov=$(awk -F, 'NR>1 {lm+=$8; lc+=$9; bm+=$6; bc+=$7} END {if (lm+lc>0) printf "lines %5.1f%%  branches %5.1f%%", 100*lc/(lm+lc), (bm+bc>0 ? 100*bc/(bm+bc) : 100)}' "$csv" 2>/dev/null)
+  printf '%-45s %4s tests %3s failed  %-4s  %s\n' "$(basename "$d")" "$tests" "$failed" "$mark" "$cov"
 done
+echo "Coverage counts only generated main classes; per-class HTML: build/generated/<scenario>/build/reports/jacoco/test/html/index.html"
 [ $status = 0 ] || echo "Some scenarios failed; compiler errors are in $here/build/projects.log, test reports in build/generated/<scenario>/build/reports"
 exit $status

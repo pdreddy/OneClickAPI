@@ -232,4 +232,35 @@ class ProjectTest {
     fun `unknown build tool cannot be edited`() {
         BuildFileEditor.addDependencies(BuildTool.UNKNOWN, "", deps)
     }
+
+    @Test
+    fun `jacoco is added to gradle groovy and kotlin builds once`() {
+        val groovy = "plugins {\n    id 'java'\n}\n\ndependencies {\n}\n"
+        val g = BuildFileEditor.addJacoco(BuildTool.GRADLE_GROOVY, groovy)
+        assertTrue(g.contains("    id 'java'\n    id 'jacoco'\n}"))
+        assertTrue(g.contains("tasks.named('test') { finalizedBy 'jacocoTestReport' }"))
+        assertEquals("already configured builds are left alone", g, BuildFileEditor.addJacoco(BuildTool.GRADLE_GROOVY, g))
+
+        val kts = "plugins {\n    java\n}\n"
+        val k = BuildFileEditor.addJacoco(BuildTool.GRADLE_KOTLIN, kts)
+        assertTrue(k.contains("    java\n    jacoco\n}"))
+        assertTrue(k.contains("tasks.named<JacocoReport>(\"jacocoTestReport\")"))
+
+        val noPlugins = BuildFileEditor.addJacoco(BuildTool.GRADLE_GROOVY, "apply plugin: 'java'\n")
+        assertTrue(noPlugins.startsWith("apply plugin: 'jacoco'"))
+    }
+
+    @Test
+    fun `jacoco maven plugin goes into project build plugins only`() {
+        val withPlugins = pom.replace("</project>", "    <build>\n        <pluginManagement>\n            <plugins>\n            </plugins>\n        </pluginManagement>\n        <plugins>\n        </plugins>\n    </build>\n</project>")
+        val out = BuildFileEditor.addJacoco(BuildTool.MAVEN, withPlugins)
+        val managed = out.substring(out.indexOf("<pluginManagement>"), out.indexOf("</pluginManagement>"))
+        assertFalse("not inside pluginManagement", managed.contains("jacoco"))
+        assertTrue(out.contains("<artifactId>jacoco-maven-plugin</artifactId>"))
+        assertTrue(out.contains("<goal>prepare-agent</goal>") && out.contains("<goal>report</goal>"))
+
+        val noBuild = BuildFileEditor.addJacoco(BuildTool.MAVEN, pom)
+        assertTrue(noBuild.contains("<build>") && noBuild.indexOf("jacoco-maven-plugin") < noBuild.indexOf("</project>"))
+        assertEquals(noBuild, BuildFileEditor.addJacoco(BuildTool.MAVEN, noBuild))
+    }
 }

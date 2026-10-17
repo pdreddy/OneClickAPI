@@ -5,6 +5,7 @@ subprojects {
     val boot2 = name.contains("boot2")
     val boot4 = name.contains("boot4")
     apply(plugin = "java")
+    apply(plugin = "jacoco")
     apply(plugin = "io.spring.dependency-management")
     repositories { mavenCentral() }
     the<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension>().imports {
@@ -31,6 +32,13 @@ subprojects {
         "runtimeOnly"("com.h2database:h2")
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+    }
+    the<JacocoPluginExtension>().toolVersion = "0.8.14"
+    tasks.named<Test>("test") { finalizedBy("jacocoTestReport") }
+    tasks.named<JacocoReport>("jacocoTestReport") {
+        reports { csv.required.set(true); html.required.set(true) }
+        // Only what the generator wrote counts: the harness's own application class and the sample entities do not.
+        classDirectories.setFrom(files(classDirectories.files.map { fileTree(it) { exclude("com/acme/shop/ShopApplication*", "com/acme/shop/model/**", "com/acme/shop/pojo/**") } }))
     }
     tasks.withType<Test> { useJUnitPlatform(); testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL } }
 }

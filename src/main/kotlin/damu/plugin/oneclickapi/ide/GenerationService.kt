@@ -10,6 +10,7 @@ import damu.plugin.oneclickapi.core.plan.DuplicateClasses
 import damu.plugin.oneclickapi.core.plan.TemplateEngine
 import damu.plugin.oneclickapi.core.preset.PresetStore
 import damu.plugin.oneclickapi.core.project.BuildFileEditor
+import damu.plugin.oneclickapi.core.project.BuildTool
 import damu.plugin.oneclickapi.core.project.DependencyAdvisor
 import damu.plugin.oneclickapi.core.write.GenerationReport
 import damu.plugin.oneclickapi.core.write.PlanExecutor
@@ -151,25 +152,31 @@ object GenerationService {
         warnings: MutableList<String>
     ) {
         val missing = DependencyAdvisor.missing(DependencyAdvisor.required(models, options, profile.bootMajor), profile)
-        if (missing.isEmpty()) return
-        val names = missing.joinToString { it.lib.display }
+        val coverage = options.tests.coverage
+        if (missing.isEmpty() && !coverage) return
+        val names = (missing.map { it.lib.display } + if (coverage) listOf("JaCoCo coverage report") else emptyList()).joinToString()
         val buildFile = profile.buildFile
         if (buildFile == null) {
-            warnings += "Missing dependencies: $names. No pom.xml or build.gradle(.kts) found in the module, add them by hand."
+            warnings += "Missing in the build: $names. No pom.xml or build.gradle(.kts) found in the module, add them by hand."
             return
         }
         if (!preview) {
-            warnings += "Missing dependencies: $names. Turn on the preview to have them added to $buildFile."
+            warnings += "Missing in the build: $names. Turn on the preview to have them added to $buildFile."
             return
         }
         try {
             val text = files.read(buildFile) ?: return
-            val updated = BuildFileEditor.addDependencies(profile.buildTool, text, missing.flatMap { it.dependencies })
+            var updated = BuildFileEditor.addDependencies(profile.buildTool, text, missing.flatMap { it.dependencies })
+            if (coverage) updated = BuildFileEditor.addJacoco(profile.buildTool, updated)
             if (updated != text) {
-                out.add(0, PlannedFile(buildFile, updated, FileKind.BUILD, "Adds missing dependencies: $names", "build", ConflictPolicy.REPLACE))
+                out.add(0, PlannedFile(buildFile, updated, FileKind.BUILD, "Adds to the build: $names", "build", ConflictPolicy.REPLACE))
+            }
+            if (coverage) {
+                val report = if (profile.buildTool == BuildTool.MAVEN) "target/site/jacoco/index.html" else "build/reports/jacoco/test/html/index.html"
+                warnings += "Coverage: run the tests (${if (profile.buildTool == BuildTool.MAVEN) "mvn test" else "./gradlew test"}) and open $report."
             }
         } catch (e: BuildFileEditor.EditException) {
-            warnings += "Missing dependencies: $names. Could not edit $buildFile (${e.message}); add them by hand."
+            warnings += "Missing in the build: $names. Could not edit $buildFile (${e.message}); add them by hand."
         }
     }
 

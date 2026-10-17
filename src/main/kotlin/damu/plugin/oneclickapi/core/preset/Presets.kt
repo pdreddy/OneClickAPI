@@ -59,7 +59,7 @@ object BuiltInPresets {
     )
 
     val ENTERPRISE = Preset(
-        "Enterprise API", "Everything on: pagination and search, standard responses and errors, soft delete, audit fields, OpenAPI, service, controller, mapper and full-stack API tests and .http files.",
+        "Enterprise API", "Everything on: pagination and search, standard responses and errors, soft delete, audit fields, OpenAPI, service, controller, mapper and full-stack API tests, a JaCoCo coverage report and .http files.",
         m(
             "lombok" to "true", "repository" to "JPA Repository", "converter" to "MapStruct", "exceptionHandling" to "true",
             "standards" to m(
@@ -68,7 +68,7 @@ object BuiltInPresets {
             ),
             "tests" to m(
                 "service" to "true", "controller" to "true", "http" to "true",
-                "mapper" to "true", "integration" to "true"
+                "mapper" to "true", "integration" to "true", "coverage" to "true"
             ),
             "openApi" to m("annotations" to "true", "spec" to "true", "config" to "true"),
             "onConflict" to "merge"
@@ -154,7 +154,8 @@ object PresetCodec {
                     controllerTests = t["controller"].bool() ?: d.controllerTests,
                     httpFile = t["http"].bool() ?: d.httpFile,
                     mapperTests = t["mapper"].bool() ?: d.mapperTests,
-                    integrationTests = t["integration"].bool() ?: d.integrationTests
+                    integrationTests = t["integration"].bool() ?: d.integrationTests,
+                    coverage = t["coverage"].bool() ?: d.coverage
                 )
             )
         }
@@ -200,7 +201,7 @@ object PresetCodec {
         m["tests"] = linkedMapOf(
             "service" to o.tests.serviceTests.toString(), "controller" to o.tests.controllerTests.toString(),
             "http" to o.tests.httpFile.toString(), "mapper" to o.tests.mapperTests.toString(),
-            "integration" to o.tests.integrationTests.toString()
+            "integration" to o.tests.integrationTests.toString(), "coverage" to o.tests.coverage.toString()
         )
         m["openApi"] = linkedMapOf(
             "annotations" to o.openApi.annotations.toString(), "spec" to o.openApi.spec.toString(), "config" to o.openApi.config.toString()

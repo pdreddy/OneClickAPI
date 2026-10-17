@@ -19,6 +19,102 @@ object BuildFileEditor {
         }
     }
 
+    /** JaCoCo version written to the build file; supports Java up to 25. */
+    const val JACOCO = "0.8.14"
+
+    /**
+     * Makes `test` also write a JaCoCo coverage report: `build/reports/jacoco/test/html/index.html` (Gradle) or
+     * `target/site/jacoco/index.html` (Maven). Returns [text] unchanged if the build already mentions JaCoCo.
+     */
+    fun addJacoco(tool: BuildTool, text: String): String {
+        if (text.contains("jacoco", ignoreCase = true)) return text
+        return when (tool) {
+            BuildTool.MAVEN -> addMavenJacoco(text)
+            BuildTool.GRADLE_KOTLIN -> addGradleJacoco(text, kotlin = true)
+            BuildTool.GRADLE_GROOVY -> addGradleJacoco(text, kotlin = false)
+            BuildTool.UNKNOWN -> throw EditException("No pom.xml or build.gradle(.kts) found in the module.")
+        }
+    }
+
+    private fun addGradleJacoco(text: String, kotlin: Boolean): String {
+        val nl = if (text.contains("\r\n")) "\r\n" else "\n"
+        val plugins = topLevelBlock(text, "plugins")
+        val withPlugin = if (plugins != null) {
+            val close = plugins.last
+            val lineStart = text.lastIndexOf('\n', close - 1) + 1
+            val at = if (text.substring(lineStart, close).isBlank()) lineStart else close
+            text.substring(0, at) + (if (kotlin) "    jacoco" else "    id 'jacoco'") + nl + text.substring(at)
+        } else {
+            (if (kotlin) "apply(plugin = \"jacoco\")" else "apply plugin: 'jacoco'") + nl + nl + text
+        }
+        val config = if (kotlin) listOf(
+            "configure<JacocoPluginExtension> { toolVersion = \"$JACOCO\" }",
+            "tasks.named<Test>(\"test\") { finalizedBy(\"jacocoTestReport\") }",
+            "tasks.named<JacocoReport>(\"jacocoTestReport\") {",
+            "    dependsOn(\"test\")",
+            "    reports { xml.required.set(true); html.required.set(true) }",
+            "}"
+        ) else listOf(
+            "jacoco { toolVersion = '$JACOCO' }",
+            "tasks.named('test') { finalizedBy 'jacocoTestReport' }",
+            "tasks.named('jacocoTestReport') {",
+            "    dependsOn 'test'",
+            "    reports { xml.required = true; html.required = true }",
+            "}"
+        )
+        val sep = if (withPlugin.endsWith("\n")) "" else nl
+        return withPlugin + sep + nl + "// OneClickAPI: test coverage report in build/reports/jacoco/test/html/index.html" + nl +
+            config.joinToString(nl) + nl
+    }
+
+    private fun addMavenJacoco(text: String): String {
+        val nl = if (text.contains("\r\n")) "\r\n" else "\n"
+        fun plugin(indent: String): String {
+            val i1 = "$indent    "
+            val i2 = "$i1    "
+            val i3 = "$i2    "
+            val i4 = "$i3    "
+            return listOf(
+                "$indent<!-- OneClickAPI: test coverage report in target/site/jacoco/index.html -->",
+                "$indent<plugin>",
+                "$i1<groupId>org.jacoco</groupId>",
+                "$i1<artifactId>jacoco-maven-plugin</artifactId>",
+                "$i1<version>$JACOCO</version>",
+                "$i1<executions>",
+                "$i2<execution>",
+                "$i3<goals>",
+                "$i4<goal>prepare-agent</goal>",
+                "$i3</goals>",
+                "$i2</execution>",
+                "$i2<execution>",
+                "$i3<id>report</id>",
+                "$i3<phase>test</phase>",
+                "$i3<goals>",
+                "$i4<goal>report</goal>",
+                "$i3</goals>",
+                "$i2</execution>",
+                "$i1</executions>",
+                "$indent</plugin>"
+            ).joinToString(nl) + nl
+        }
+        closeOf(text, listOf("project", "build", "plugins"))?.let { close ->
+            val lineStart = text.lastIndexOf('\n', close - 1) + 1
+            val closeIndent = text.substring(lineStart, close).takeIf { it.isBlank() } ?: ""
+            val at = if (closeIndent.isNotEmpty() || lineStart == close) lineStart else close
+            return text.substring(0, at) + plugin("$closeIndent    ") + text.substring(at)
+        }
+        closeOf(text, listOf("project", "build"))?.let { close ->
+            val lineStart = text.lastIndexOf('\n', close - 1) + 1
+            val at = if (text.substring(lineStart, close).isBlank()) lineStart else close
+            return text.substring(0, at) + "        <plugins>$nl" + plugin("            ") + "        </plugins>$nl" + text.substring(at)
+        }
+        val end = text.lastIndexOf("</project>")
+        if (end < 0) throw EditException("pom.xml has no </project> tag.")
+        val lineStart = text.lastIndexOf('\n', end - 1) + 1
+        return text.substring(0, lineStart) + "    <build>$nl        <plugins>$nl" + plugin("            ") +
+            "        </plugins>$nl    </build>$nl" + text.substring(lineStart)
+    }
+
     // ------------------------------------------------------------------------------------------ Maven
 
     private fun addMaven(text: String, deps: List<Dependency>): String {
@@ -67,7 +163,10 @@ object BuildFileEditor {
     }
 
     /** Index of the `</dependencies>` that closes the project-level block (not dependencyManagement/plugins/profiles). */
-    private fun projectDependenciesClose(text: String): Int? {
+    private fun projectDependenciesClose(text: String): Int? = closeOf(text, listOf("project", "dependencies"))
+
+    /** Index of the closing tag of the element at exactly [path] from the root, e.g. project/build/plugins. */
+    private fun closeOf(text: String, path: List<String>): Int? {
         val tag = Regex("""<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?]]>|<(/?)([A-Za-z_][\w.-]*)[^>]*?(/?)>""")
         val stack = ArrayDeque<String>()
         for (m in tag.findAll(text)) {
@@ -76,7 +175,7 @@ object BuildFileEditor {
             val closing = m.groupValues[1] == "/"
             val selfClosing = m.groupValues[3] == "/"
             if (closing) {
-                if (name == "dependencies" && stack.size == 2 && stack[0] == "project" && stack[1] == "dependencies") return m.range.first
+                if (name == path.last() && stack.toList() == path) return m.range.first
                 if (stack.isNotEmpty()) stack.removeLast()
             } else if (!selfClosing && !m.value.startsWith("<?")) {
                 stack.addLast(name)
@@ -118,7 +217,10 @@ object BuildFileEditor {
     }
 
     /** Range of the outermost `dependencies { ... }` (not the one inside `buildscript`). */
-    private fun topLevelDependenciesBlock(text: String): IntRange? {
+    private fun topLevelDependenciesBlock(text: String): IntRange? = topLevelBlock(text, "dependencies")
+
+    /** Range of the top-level `name { ... }` block, braces included. */
+    private fun topLevelBlock(text: String, name: String): IntRange? {
         var depth = 0
         var i = 0
         val masked = maskStringsAndComments(text)
@@ -126,9 +228,9 @@ object BuildFileEditor {
             when (masked[i]) {
                 '{' -> depth++
                 '}' -> depth--
-                else -> if (depth == 0 && masked.startsWith("dependencies", i) &&
+                else -> if (depth == 0 && masked.startsWith(name, i) &&
                     (i == 0 || !masked[i - 1].isLetterOrDigit()) &&
-                    Regex("""dependencies\s*\{""").matchAt(masked, i) != null
+                    Regex("""$name\s*\{""").matchAt(masked, i) != null
                 ) {
                     val open = masked.indexOf('{', i)
                     var d = 0

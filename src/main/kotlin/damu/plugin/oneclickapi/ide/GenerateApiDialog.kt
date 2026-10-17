@@ -124,6 +124,7 @@ class GenerateApiDialog(
     private val httpFileCheckBox = JBCheckBox("IntelliJ .http request file")
     private val mapperTestsCheckBox = JBCheckBox("Mapper tests (entity <-> DTO, relation ids)")
     private val integrationTestsCheckBox = JBCheckBox("Full-stack API tests (real controller, service, repository on in-memory H2; JPA only)")
+    private val coverageCheckBox = JBCheckBox("Coverage report (adds JaCoCo to the build file; report written by the test task)")
     private val openApiAnnotationsCheckBox = JBCheckBox("Springdoc / OpenAPI annotations")
     private val openApiSpecCheckBox = JBCheckBox("OpenAPI 3 spec file (YAML)")
     private val openApiConfigCheckBox = JBCheckBox("OpenApiConfig bean (title, version)")
@@ -286,6 +287,7 @@ class GenerateApiDialog(
         httpFileCheckBox.isSelected = o.tests.httpFile
         mapperTestsCheckBox.isSelected = o.tests.mapperTests
         integrationTestsCheckBox.isSelected = o.tests.integrationTests
+        coverageCheckBox.isSelected = o.tests.coverage
         openApiAnnotationsCheckBox.isSelected = o.openApi.annotations
         openApiSpecCheckBox.isSelected = o.openApi.spec
         openApiConfigCheckBox.isSelected = o.openApi.config
@@ -495,6 +497,7 @@ class GenerateApiDialog(
                 row { cell(httpFileCheckBox) }
                 row { cell(mapperTestsCheckBox) }
                 row { cell(integrationTestsCheckBox) }
+                row { cell(coverageCheckBox) }
                 row { cell(openApiAnnotationsCheckBox) }
                 row { cell(openApiSpecCheckBox) }
                 row { cell(openApiConfigCheckBox) }
@@ -575,7 +578,7 @@ class GenerateApiDialog(
             tests = TestOptions(
                 serviceTests = serviceTestsCheckBox.isSelected, controllerTests = controllerTestsCheckBox.isSelected,
                 httpFile = httpFileCheckBox.isSelected, mapperTests = mapperTestsCheckBox.isSelected,
-                integrationTests = integrationTestsCheckBox.isSelected
+                integrationTests = integrationTestsCheckBox.isSelected, coverage = coverageCheckBox.isSelected
             ),
             openApi = OpenApiOptions(openApiAnnotationsCheckBox.isSelected, openApiSpecCheckBox.isSelected, openApiConfigCheckBox.isSelected),
             conflictPolicy = ConflictPolicy.entries.firstOrNull { it.label == conflictComboBox.selectedItem } ?: ConflictPolicy.SKIP
