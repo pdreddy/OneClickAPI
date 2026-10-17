@@ -78,7 +78,9 @@ class GenerateApiAction : DumbAwareAction("Generate API") {
             if (selectedClasses.isNotEmpty()) {
                 for ((index, psiClass) in selectedClasses.withIndex()) {
                     // Determine ORM type for each class individually
-                    val classOrmType = if (PsiUtils.isEntityClass(psiClass)) {
+                    val classOrmType = if (dialog.getOrmOverride() != null) {
+                        dialog.getOrmOverride()!!
+                    } else if (PsiUtils.isEntityClass(psiClass)) {
                         "JPA/Hibernate"
                     } else if (PsiUtils.isPojoClass(psiClass)) {
                         "MyBatis"

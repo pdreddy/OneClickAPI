@@ -66,6 +66,11 @@ class GenerateApiDialog(
     // ORM Type display label
     private val ormTypeLabel = JLabel()
 
+    // Lets the user force the persistence style; "Auto-detect" keeps the per-class detection
+    private val ormTypeComboBox = JComboBox(
+        DefaultComboBoxModel(arrayOf(ORM_AUTO, ORM_JPA, ORM_MYBATIS))
+    )
+
     private val repositoryTypeComboBox = JComboBox(
         DefaultComboBoxModel(
             arrayOf("JPA Repository", "CRUD Repository")
@@ -86,7 +91,7 @@ class GenerateApiDialog(
     private val liquibaseFileNameTextField = JTextField()
     private val liquibaseFormatComboBox = JComboBox(
         DefaultComboBoxModel(
-            arrayOf("XML", "YAML")
+            arrayOf("XML", "YAML", "JSON", "SQL")
         )
     )
     private val generateImageUploadApiCheckBox = JBCheckBox("Generate Image Upload API")
@@ -105,6 +110,7 @@ class GenerateApiDialog(
         updateOrmTypeLabel()
 
         classPathButton.addActionListener { showPackageChooser() }
+        ormTypeComboBox.addActionListener { updateRepositoryAndConverterVisibility() }
 
         // Add class button
         addClassButton.addActionListener {
@@ -265,11 +271,15 @@ class GenerateApiDialog(
 
     private fun updateRepositoryAndConverterVisibility() {
         val allClasses = getAllClasses()
-        val hasEntity = allClasses.any { PsiUtils.isEntityClass(it) }
+        val usesJpa = when (ormTypeComboBox.selectedItem) {
+            ORM_JPA -> true
+            ORM_MYBATIS -> false
+            else -> allClasses.any { PsiUtils.isEntityClass(it) }
+        }
         val isCrudApiEnabled = generateCrudApiCheckBox.isSelected
 
-        repositoryTypeComboBox.isVisible = hasEntity && isCrudApiEnabled
-        converterTypeComboBox.isVisible = hasEntity && isCrudApiEnabled
+        repositoryTypeComboBox.isVisible = usesJpa && isCrudApiEnabled
+        converterTypeComboBox.isVisible = usesJpa && isCrudApiEnabled
     }
 
     private fun updateCrudApiFieldsVisibility() {
@@ -387,7 +397,12 @@ class GenerateApiDialog(
                 cell(classPathButton)
             }
 
-            row("Detected ORM Type:") {
+            row("ORM Type:") {
+                cell(ormTypeComboBox)
+                    .align(AlignX.FILL)
+            }
+
+            row("Detected from classes:") {
                 cell(ormTypeLabel)
                     .bold()
             }
@@ -480,6 +495,13 @@ class GenerateApiDialog(
     fun generateImageUploadApi(): Boolean = generateImageUploadApiCheckBox.isSelected
     fun generatePdfUploadApi(): Boolean = generatePdfUploadApiCheckBox.isSelected
     fun getOrmType(): String = ormTypeLabel.text ?: "JPA/Hibernate"
+
+    /** The ORM the user forced, or null to detect it per class. */
+    fun getOrmOverride(): String? = when (ormTypeComboBox.selectedItem) {
+        ORM_JPA -> "JPA/Hibernate"
+        ORM_MYBATIS -> "MyBatis"
+        else -> null
+    }
     fun generateCrudApi(): Boolean = generateCrudApiCheckBox.isSelected
 }
 
@@ -490,3 +512,7 @@ data class ClassItem(
 ) {
     override fun toString(): String = displayName
 }
+
+private const val ORM_AUTO = "Auto-detect"
+private const val ORM_JPA = "JPA/Hibernate"
+private const val ORM_MYBATIS = "MyBatis"

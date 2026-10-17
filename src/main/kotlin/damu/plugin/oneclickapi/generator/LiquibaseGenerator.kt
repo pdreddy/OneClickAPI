@@ -15,6 +15,8 @@ object LiquibaseGenerator {
         return when (format.lowercase()) {
             "yaml" -> generateYamlContent(psiClass)
             "xml" -> generateXmlContent(psiClass)
+            "json" -> generateJsonContent(psiClass)
+            "sql" -> generateSqlContent(psiClass)
             else -> throw IllegalArgumentException("Unknown format: $format")
         }
     }
@@ -32,6 +34,60 @@ object LiquibaseGenerator {
         |${indent(4)}columns:
         |$columns
         """.trimMargin().replaceIndent()
+    }
+
+    private fun generateJsonContent(psiClass: PsiClass): String {
+        val tableName = psiClass.name?.lowercase()
+        val columns = psiClass.fields.joinToString(",\n") { field ->
+            """
+            |${indent(5)}{
+            |${indent(6)}"column": {
+            |${indent(7)}"name": "${field.name}",
+            |${indent(7)}"type": "${mapJavaTypeToDbType(field.type.canonicalText)}",
+            |${indent(7)}"constraints": { "nullable": ${isNullable(field)} }
+            |${indent(6)}}
+            |${indent(5)}}
+            """.trimMargin()
+        }
+        return """
+        |{
+        |${indent(1)}"databaseChangeLog": [
+        |${indent(2)}{
+        |${indent(3)}"changeSet": {
+        |${indent(4)}"id": "${psiClass.name}-01",
+        |${indent(4)}"author": "autoapigen",
+        |${indent(4)}"changes": [
+        |${indent(5)}{
+        |${indent(6)}"createTable": {
+        |${indent(7)}"tableName": "$tableName",
+        |${indent(7)}"columns": [
+        |$columns
+        |${indent(7)}]
+        |${indent(6)}}
+        |${indent(5)}}
+        |${indent(4)}]
+        |${indent(3)}}
+        |${indent(2)}}
+        |${indent(1)}]
+        |}
+        """.trimMargin()
+    }
+
+    private fun generateSqlContent(psiClass: PsiClass): String {
+        val tableName = psiClass.name?.lowercase()
+        val columns = psiClass.fields.joinToString(",\n") { field ->
+            val notNull = if (isNullable(field)) "" else " NOT NULL"
+            "${indent(1)}${field.name} ${mapJavaTypeToDbType(field.type.canonicalText)}$notNull"
+        }
+        return """
+        |--liquibase formatted sql
+        |
+        |--changeset autoapigen:${psiClass.name}-01
+        |CREATE TABLE $tableName (
+        |$columns
+        |);
+        |--rollback DROP TABLE $tableName;
+        """.trimMargin()
     }
 
     private fun generateXmlContent(psiClass: PsiClass): String {
@@ -90,11 +146,15 @@ object LiquibaseGenerator {
     private fun mapJavaTypeToDbType(javaType: String): String {
         return when (javaType) {
             "java.lang.String" -> "VARCHAR(255)"
-            "int" -> "INT"
-            "long" -> "BIGINT"
-            "boolean" -> "BOOLEAN"
+            "int", "java.lang.Integer" -> "INT"
+            "long", "java.lang.Long" -> "BIGINT"
+            "short", "java.lang.Short" -> "SMALLINT"
+            "boolean", "java.lang.Boolean" -> "BOOLEAN"
+            "float", "java.lang.Float" -> "FLOAT"
+            "double", "java.lang.Double" -> "DOUBLE"
+            "java.math.BigDecimal" -> "DECIMAL(19,2)"
             "java.time.LocalDate" -> "DATE"
-            "java.time.LocalDateTime" -> "TIMESTAMP"
+            "java.time.LocalDateTime", "java.time.Instant", "java.time.OffsetDateTime" -> "TIMESTAMP"
             else -> "VARCHAR(255)"
         }
     }

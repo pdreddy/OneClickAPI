@@ -1,0 +1,77 @@
+package ${classPackageName};
+
+import ${servicePackage}.${className}Service;
+import ${dtoPackage}.request.${className}Request;
+import ${dtoPackage}.response.${className}Response;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import java.util.List;
+
+<#if useLombok>
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+<#else>
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+</#if>
+
+<#if useLombok>
+@Slf4j
+@RequiredArgsConstructor
+<#else>
+</#if>
+@RestController
+@RequestMapping("${basePath}/${className?lower_case}")
+public class ${className}Controller {
+
+    <#if !useLombok>
+    private static final Logger log = LoggerFactory.getLogger(${className}Controller.class);
+    </#if>
+    private final ${className}Service service;
+
+    <#if !useLombok>
+    public ${className}Controller(${className}Service service) {
+        this.service = service;
+    }
+    </#if>
+
+    @PostMapping
+    public ResponseEntity<${className}Response> create(@Valid @RequestBody ${className}Request request) {
+        log.info("REST request to create ${className} : {}", request);
+        ${className}Response response = service.save(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<${className}Response> findById(@PathVariable ${idType} id) {
+        log.info("REST request to get ${className} by id : {}", id);
+        return service.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    public ResponseEntity<List<${className}Response>> findAll() {
+        log.info("REST request to get all ${className}s");
+        return ResponseEntity.ok(service.findAll());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<${className}Response> update(
+            @PathVariable ${idType} id,
+            @Valid @RequestBody ${className}Request request
+    ) {
+        log.info("REST request to update ${className} : {}, {}", id, request);
+        ${className}Response response = service.update(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable ${idType} id) {
+        log.info("REST request to delete ${className} by id : {}", id);
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}

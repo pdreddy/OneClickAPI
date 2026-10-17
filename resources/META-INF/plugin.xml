@@ -1,0 +1,51 @@
+<idea-plugin>
+    <id>damu.plugin.oneclickapi</id>
+    <name>OneClickAPI</name>
+    <version>1.0.0</version>
+    <vendor email="damup1985@gmail.com">Damohara Reddy Palavali</vendor>
+
+    <description>
+        <![CDATA[
+        <h2>OneClickAPI - Generate a complete Spring Boot REST API from an @Entity or POJO class in one click. Free and open source.</h2>
+        <p>Select one or many classes and get DTOs, mappers, repositories, services and controllers in seconds.</p>
+        <h3>Features</h3>
+        <ul>
+            <li>Generate from JPA <code>@Entity</code> classes or plain POJOs (MyBatis)</li>
+            <li>Request/Response DTOs, MapStruct or manual mappers, repositories, services and controllers</li>
+            <li>Multi-class selection: generate APIs for many classes at once</li>
+            <li>Lombok support</li>
+            <li>Liquibase changelogs in XML or YAML</li>
+            <li>Image and PDF upload endpoints</li>
+            <li>Global exception handling</li>
+            <li>Never overwrites existing files</li>
+        </ul>
+        <h3>How to use</h3>
+        <ol>
+            <li>Open a Spring Boot project.</li>
+            <li>Select a class, then use <b>File &gt; New &gt; Generate API</b> or <b>Code &gt; Generate &gt; Generate API</b> (Cmd/Alt+N).</li>
+            <li>Choose your options and click OK.</li>
+        </ol>
+        ]]>
+    </description>
+
+    <change-notes><![CDATA[
+        <b>1.0.0</b> - First public release as OneClickAPI: free, multi-class selection, JPA and MyBatis, Liquibase (XML/YAML), file upload APIs, global exception handling.
+    ]]></change-notes>
+
+
+    <idea-version since-build="242.0" until-build="262.*"/>
+
+    <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.modules.platform</depends>
+
+    <actions>
+        <action id="damu.plugin.oneclickapi.GenerateApiAction"
+                class="damu.plugin.oneclickapi.GenerateApiAction"
+                text="Generate API"
+                description="Generate code for entity classes">
+            <add-to-group group-id="NewGroup" anchor="last"/>
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+    </actions>
+
+</idea-plugin>

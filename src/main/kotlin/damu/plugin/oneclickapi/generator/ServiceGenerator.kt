@@ -40,7 +40,8 @@ object ServiceGenerator {
             "dtoPackage" to dtoPackage,
             "idType" to idType,
             "useLombok" to useLombok,
-            "repoType" to repoType
+            // The template only distinguishes "JPA" (Spring Data repository) from MyBatis mapper access
+            "repoType" to if (repoType.startsWith("JPA") || repoType.startsWith("CRUD")) "JPA" else repoType
         )
 
         return TemplateEngine.processTemplate("Service.java.ft", dataModel)

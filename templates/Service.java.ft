@@ -1,0 +1,110 @@
+package ${classPackageName};
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+<#if repoType == "JPA">
+import ${repositoryPackage}.${className}Repository;
+</#if>
+import ${mapperPackage}.${className}Mapper;
+import ${entityPackageName}.${className};
+import ${dtoPackage}.request.${className}Request;
+import ${dtoPackage}.response.${className}Response;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+<#if useLombok>
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+<#else>
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+</#if>
+
+@Service
+<#if useLombok>
+@Slf4j
+@RequiredArgsConstructor
+</#if>
+@Transactional(readOnly = true)
+public class ${className}Service {
+
+    <#if !useLombok>
+    private static final Logger log = LoggerFactory.getLogger(${className}Service.class);
+    </#if>
+
+    <#if repoType == "JPA">
+    private final ${className}Repository repository;
+    </#if>
+    private final ${className}Mapper mapper;
+
+    <#if !useLombok>
+    public ${className}Service(<#if repoType == "JPA">${className}Repository repository, </#if>${className}Mapper mapper) {
+        <#if repoType == "JPA">
+        this.repository = repository;
+        </#if>
+        this.mapper = mapper;
+    }
+    </#if>
+
+    public List<${className}Response> findAll() {
+        log.debug("Request to get all ${className}s");
+        <#if repoType == "JPA">
+        return repository.findAll()
+        <#else>
+        return mapper.findAll() <#-- MyBatis-də birbaşa mapper-dən çağırırıq -->
+        </#if>
+                .stream()
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public Optional<${className}Response> findById(${idType} id) {
+        log.debug("Request to get ${className} by id : {}", id);
+        <#if repoType == "JPA">
+        return repository.findById(id).map(mapper::toResponse);
+        <#else>
+        return mapper.findById(id).map(mapper::toResponse);
+        </#if>
+    }
+
+    @Transactional
+    public ${className}Response save(${className}Request request) {
+        log.debug("Request to save ${className} : {}", request);
+        ${className} entity = mapper.toEntity(request);
+        <#if repoType == "JPA">
+        repository.save(entity);
+        <#else>
+        mapper.insert(entity); <#-- MyBatis stili -->
+        </#if>
+        return mapper.toResponse(entity);
+    }
+
+    @Transactional
+    public ${className}Response update(${idType} id, ${className}Request request) {
+        log.debug("Request to update ${className} by id : {}", id);
+        <#if repoType == "JPA">
+        ${className} existingEntity = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("${className} not found with id " + id));
+        mapper.updateFromDto(request, existingEntity);
+        repository.save(existingEntity);
+        <#else>
+        ${className} existingEntity = mapper.findById(id)
+                .orElseThrow(() -> new RuntimeException("${className} not found with id " + id));
+        mapper.updateFromDto(request, existingEntity);
+        mapper.update(existingEntity);
+        </#if>
+        return mapper.toResponse(existingEntity);
+    }
+
+    @Transactional
+    public void delete(${idType} id) {
+        log.debug("Request to delete ${className} by id : {}", id);
+        <#if repoType == "JPA">
+        repository.deleteById(id);
+        <#else>
+        mapper.deleteById(id);
+        </#if>
+    }
+}
