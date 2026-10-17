@@ -50,7 +50,7 @@ class PreviewDialog(
 
     private val columns = arrayOf("", "Action", "If exists", "File", "Package / folder")
 
-    private val tableModel = object : AbstractTableModel() {
+    private val tableModel: AbstractTableModel = object : AbstractTableModel() {
         override fun getRowCount() = entries.size
         override fun getColumnCount() = columns.size
         override fun getColumnName(column: Int) = columns[column]
@@ -88,7 +88,7 @@ class PreviewDialog(
         }
     }
 
-    private val table = JBTable(tableModel).apply {
+    private val table: JBTable = JBTable(tableModel).apply {
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
         columnModel.getColumn(0).apply { minWidth = 28; maxWidth = 28 }
         columnModel.getColumn(1).preferredWidth = 90
