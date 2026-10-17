@@ -3,26 +3,15 @@
 
 package damu.plugin.oneclickapi.generator.upload
 
-import damu.plugin.oneclickapi.generator.ClassGenerator
-import damu.plugin.oneclickapi.util.GeneratorUtils
-import damu.plugin.oneclickapi.util.PackageUtils
-import com.intellij.psi.PsiDirectory
-import com.intellij.psi.PsiElementFactory
 
 object FileDtoGenerator {
 
-    fun generateFileDto(
-        factory: PsiElementFactory,
-        directory: PsiDirectory,
-        packageName: String
-    ) {
-        val dtoPackage = PackageUtils.createPackageIfNotExists(directory, "$packageName.dto")
-        val content = generateFileDtoContent(dtoPackage)
-        ClassGenerator.createClass(factory, dtoPackage, "FileDto", content)
-    }
+    fun generateFiles(packageName: String): Map<String, String> = mapOf(
+        "dto/FileDto.java" to generateFileDtoContent("$packageName.dto")
+    )
 
-    private fun generateFileDtoContent(packageName: PsiDirectory): String {
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(packageName)
+    private fun generateFileDtoContent(packageName: String): String {
+        val classPackageName = packageName
         return """
             package $classPackageName;
 

@@ -3,36 +3,23 @@
 
 package damu.plugin.oneclickapi.generator.upload
 
-import damu.plugin.oneclickapi.generator.ClassGenerator
-import damu.plugin.oneclickapi.util.GeneratorUtils
-import damu.plugin.oneclickapi.util.PackageUtils
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiDirectory
-import com.intellij.psi.PsiElementFactory
 
 object FileServiceGenerator {
 
-    fun generateFileService(
-        psiClass: PsiClass,
-        factory: PsiElementFactory,
-        directory: PsiDirectory,
-        packageName: String
-    ) {
-
-        val httpServletResponseImport = getHttpServletResponseImport(psiClass)
-        val servicePackage = PackageUtils.createPackageIfNotExists(directory, "$packageName.service")
-        val content = generateFileServiceContent(servicePackage, packageName, httpServletResponseImport)
-        ClassGenerator.createClass(factory, servicePackage, "FileService", content)
-
-    }
+    fun generateFiles(psiClass: PsiClass, packageName: String): Map<String, String> = mapOf(
+        "service/FileService.java" to generateFileServiceContent(
+            "$packageName.service", packageName, getHttpServletResponseImport(psiClass)
+        )
+    )
 
     private fun generateFileServiceContent(
-        packageName: PsiDirectory,
+        packageName: String,
         rootPackageName: String,
         httpServletResponseImport: String
     ): String {
 
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(packageName)
+        val classPackageName = packageName
 
         return """
             package $classPackageName;

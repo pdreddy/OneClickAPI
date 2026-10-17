@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+- Preview generated files in a selectable file tree with read-only current/generated diffs.
+- Create only selected files; replace existing files only when explicitly checked.
+- Include unsaved edits in previews, reject stale previews and conflicting output paths, and group applied changes into one undo action.
+
 ## 1.0.1
 - Compatibility: since-build 242 with no upper limit.
 - Fixes: Spring-bean MapStruct mapper, JPA service template, jakarta fallback.

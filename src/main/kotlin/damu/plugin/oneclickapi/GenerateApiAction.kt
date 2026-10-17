@@ -4,6 +4,10 @@
 package damu.plugin.oneclickapi
 
 import damu.plugin.oneclickapi.generator.ClassGenerator
+import damu.plugin.oneclickapi.generator.GenerationPlan
+import damu.plugin.oneclickapi.generator.PlannedFile
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.progress.ProcessCanceledException
 import damu.plugin.oneclickapi.util.PsiUtils
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.LangDataKeys
@@ -74,139 +78,153 @@ class GenerateApiAction : DumbAwareAction("Generate API") {
             val liquibasePackagePath = dialog.getLiquibasePackagePath()
             val liquibaseFormat = if (useLiquibase) dialog.getLiquibaseFormat() else null
 
-            // Process each selected class for CRUD and/or Liquibase
-            if (selectedClasses.isNotEmpty()) {
-                for ((index, psiClass) in selectedClasses.withIndex()) {
-                    // Determine ORM type for each class individually
-                    val classOrmType = if (dialog.getOrmOverride() != null) {
-                        dialog.getOrmOverride()!!
-                    } else if (PsiUtils.isEntityClass(psiClass)) {
-                        "JPA/Hibernate"
-                    } else if (PsiUtils.isPojoClass(psiClass)) {
-                        "MyBatis"
-                    } else {
-                        "JPA/Hibernate" // default
-                    }
-
-                    val liquibaseFileName = if (selectedClasses.size == 1) {
-                        dialog.getLiquibaseFileName()
-                    } else {
-                        createLiquibaseFileName(psiClass, index + 1)
-                    }
-
-                    // Call generateApi with all options, but only selected ones will be generated
-                    ClassGenerator.generateApi(
-                        psiClass,
-                        path,
-                        repoType,
-                        converterType,
-                        useLombok,
-                        useLiquibase && generateCrudApi, // Liquibase only if CRUD is also enabled for this class
-                        liquibasePackagePath,
-                        liquibaseFileName,
-                        liquibaseFormat,
-                        false, // Exception handling is independent
-                        false, // Image upload is independent
-                        false, // PDF upload is independent
-                        classOrmType,
-                        generateCrudApi, // Pass CRUD flag
-                        dialog.getBasePath()
-                    )
-                }
-            }
-
-            // Independent features (no class needed)
-            // Use first class or any class just for context if available
-            val contextClass = selectedClasses.firstOrNull() ?: psiClasses.firstOrNull()
-
-            if (contextClass != null) {
-                // Exception Handling (independent)
-                if (useExceptionHandling) {
-                    ClassGenerator.generateApi(
-                        contextClass,
-                        path,
-                        repoType,
-                        converterType,
-                        useLombok,
-                        false, // no liquibase
-                        liquibasePackagePath,
-                        "",
-                        null,
-                        true, // exception handling
-                        false,
-                        false,
-                        "JPA/Hibernate",
-                        false // no CRUD
-                    )
-                }
-
-                // Image Upload API (independent)
-                if (generateImageUploadApi) {
-                    ClassGenerator.generateApi(
-                        contextClass,
-                        path,
-                        repoType,
-                        converterType,
-                        useLombok,
-                        false,
-                        liquibasePackagePath,
-                        "",
-                        null,
-                        false,
-                        true, // image upload
-                        false,
-                        "JPA/Hibernate",
-                        false
-                    )
-                }
-
-                // PDF Upload API (independent)
-                if (generatePdfUploadApi) {
-                    ClassGenerator.generateApi(
-                        contextClass,
-                        path,
-                        repoType,
-                        converterType,
-                        useLombok,
-                        false,
-                        liquibasePackagePath,
-                        "",
-                        null,
-                        false,
-                        false,
-                        true, // pdf upload
-                        "JPA/Hibernate",
-                        false
-                    )
-                }
-
-                // Liquibase without CRUD (independent)
-                if (useLiquibase && !generateCrudApi && selectedClasses.isNotEmpty()) {
+            val plannedFiles = mutableListOf<PlannedFile>()
+            try {
+                // Process each selected class for CRUD and/or Liquibase
+                if (selectedClasses.isNotEmpty()) {
                     for ((index, psiClass) in selectedClasses.withIndex()) {
+                        // Determine ORM type for each class individually
+                        val classOrmType = if (dialog.getOrmOverride() != null) {
+                            dialog.getOrmOverride()!!
+                        } else if (PsiUtils.isEntityClass(psiClass)) {
+                            "JPA/Hibernate"
+                        } else if (PsiUtils.isPojoClass(psiClass)) {
+                            "MyBatis"
+                        } else {
+                            "JPA/Hibernate" // default
+                        }
+
                         val liquibaseFileName = if (selectedClasses.size == 1) {
                             dialog.getLiquibaseFileName()
                         } else {
                             createLiquibaseFileName(psiClass, index + 1)
                         }
 
-                        ClassGenerator.generateApi(
+                        // Call generateApi with all options, but only selected ones will be generated
+                        plannedFiles.addAll(ClassGenerator.planApi(
                             psiClass,
                             path,
                             repoType,
                             converterType,
                             useLombok,
-                            true, // liquibase
+                            useLiquibase && generateCrudApi, // Liquibase only if CRUD is also enabled for this class
                             liquibasePackagePath,
                             liquibaseFileName,
                             liquibaseFormat,
-                            false,
+                            false, // Exception handling is independent
+                            false, // Image upload is independent
+                            false, // PDF upload is independent
+                            classOrmType,
+                            generateCrudApi, // Pass CRUD flag
+                            dialog.getBasePath()
+                        ))
+                    }
+                }
+
+                // Independent features (no class needed)
+                // Use first class or any class just for context if available
+                val contextClass = selectedClasses.firstOrNull() ?: psiClasses.firstOrNull()
+
+                if (contextClass != null) {
+                    // Exception Handling (independent)
+                    if (useExceptionHandling) {
+                        plannedFiles.addAll(ClassGenerator.planApi(
+                            contextClass,
+                            path,
+                            repoType,
+                            converterType,
+                            useLombok,
+                            false, // no liquibase
+                            liquibasePackagePath,
+                            "",
+                            null,
+                            true, // exception handling
                             false,
                             false,
                             "JPA/Hibernate",
                             false // no CRUD
-                        )
+                        ))
+                    }
+
+                    // Image Upload API (independent)
+                    if (generateImageUploadApi) {
+                        plannedFiles.addAll(ClassGenerator.planApi(
+                            contextClass,
+                            path,
+                            repoType,
+                            converterType,
+                            useLombok,
+                            false,
+                            liquibasePackagePath,
+                            "",
+                            null,
+                            false,
+                            true, // image upload
+                            false,
+                            "JPA/Hibernate",
+                            false
+                        ))
+                    }
+
+                    // PDF Upload API (independent)
+                    if (generatePdfUploadApi) {
+                        plannedFiles.addAll(ClassGenerator.planApi(
+                            contextClass,
+                            path,
+                            repoType,
+                            converterType,
+                            useLombok,
+                            false,
+                            liquibasePackagePath,
+                            "",
+                            null,
+                            false,
+                            false,
+                            true, // pdf upload
+                            "JPA/Hibernate",
+                            false
+                        ))
+                    }
+
+                    // Liquibase without CRUD (independent)
+                    if (useLiquibase && !generateCrudApi && selectedClasses.isNotEmpty()) {
+                        for ((index, psiClass) in selectedClasses.withIndex()) {
+                            val liquibaseFileName = if (selectedClasses.size == 1) {
+                                dialog.getLiquibaseFileName()
+                            } else {
+                                createLiquibaseFileName(psiClass, index + 1)
+                            }
+
+                            plannedFiles.addAll(ClassGenerator.planApi(
+                                psiClass,
+                                path,
+                                repoType,
+                                converterType,
+                                useLombok,
+                                true, // liquibase
+                                liquibasePackagePath,
+                                liquibaseFileName,
+                                liquibaseFormat,
+                                false,
+                                false,
+                                false,
+                                "JPA/Hibernate",
+                                false // no CRUD
+                            ))
+                        }
                     }
                 }
+                val plan = GenerationPlan.merge(plannedFiles)
+                if (plan.isEmpty()) {
+                    Messages.showInfoMessage(project, "No files were generated. Select a class and at least one generation option.", "Generate API")
+                } else {
+                    val preview = GenerationPreviewDialog(project, plan)
+                    if (preview.showAndGet()) GenerationPlan.apply(project, preview.selectedFiles())
+                }
+            } catch (exception: ProcessCanceledException) {
+                throw exception
+            } catch (exception: Exception) {
+                Messages.showErrorDialog(project, exception.message ?: "API generation failed.", "Generate API")
             }
         }
     }

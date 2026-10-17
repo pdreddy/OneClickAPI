@@ -3,16 +3,15 @@
 
 package damu.plugin.oneclickapi.generator
 
-import damu.plugin.oneclickapi.util.GeneratorUtils
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiUtil
 
 object MapperGenerator {
 
-    fun generateMapperContent(psiClass: PsiClass, mapperPackage: PsiDirectory): String {
+    fun generateMapperContent(psiClass: PsiClass, mapperPackage: String): String {
         val className = psiClass.name ?: return ""
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(mapperPackage)
-        val packageName = mapperPackage.parentDirectory?.let { GeneratorUtils.getPackageNameFromDirectory(it) }
+        val classPackageName = mapperPackage
+        val packageName = mapperPackage.substringBeforeLast(".", "")
         val entityPackageName = PsiUtil.getPackageName(psiClass) ?: return ""
 
         val dtoPackage = "${packageName}.dto.${className.lowercase()}"

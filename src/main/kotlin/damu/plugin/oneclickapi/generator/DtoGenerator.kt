@@ -3,7 +3,6 @@
 
 package damu.plugin.oneclickapi.generator
 
-import damu.plugin.oneclickapi.util.GeneratorUtils
 import damu.plugin.oneclickapi.util.TemplateEngine
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.psi.*
@@ -14,12 +13,12 @@ object DtoGenerator {
 
     fun generateDtoContent(
         psiClass: PsiClass,
-        packagePath: PsiDirectory,
+        packagePath: String,
         classType: String,
         useLombok: Boolean
     ): String {
         val className = psiClass.name ?: return ""
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(packagePath)
+        val classPackageName = packagePath
 
         val imports = mutableSetOf<String>()
         val fieldsList = mutableListOf<Map<String, Any>>()

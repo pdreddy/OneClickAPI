@@ -16,7 +16,7 @@ You can generate APIs for a single `@Entity` or **POJO** class by following thes
 3. **Right-click** on the class in the **Edit view**.
 4. Select **Generate > Generate API** from the context menu.
 5. A configuration window will appear where you can customize the API generation settings.
-6. Click **Generate**, and the necessary files (Controller, Service, Repository, DTOs, etc.) will be created automatically.
+6. Click **Generate** to preview the proposed files, then click **Apply selected files** to create or replace only the files you checked.
 
 ---
 
@@ -40,3 +40,15 @@ When generating APIs, you will be able to configure several options, including:
 - **Liquibase Integration:** Generate Liquibase changelogs for database migrations.
 - **File Upload API:** Automatically generate API endpoints for image or PDF file uploads.
 - **Exception Handling:** Add global exception handling for better error management.
+
+## Preview and selective updates
+
+After choosing your generation options, review the proposed files in the preview dialog.
+
+- Select a file in the tree to compare the current text with the generated text. The current side includes unsaved editor changes.
+- New files are checked by default. Existing files are unchecked; check an individual file only when you want to replace its entire contents. Unchanged files cannot be selected.
+- Click a file's checkbox or press Space to toggle it. **Select new** restores the default selection; **Clear selection** unchecks everything.
+- Click **Apply selected files** to write only the checked files. Selecting only part of an API may require dependencies that already exist in your project.
+- Cancel closes the preview without creating files or directories. Applied changes are grouped into one **Generate API files** undo action.
+
+If a selected file changes after preview, generation stops before writing any selected files. Open Generate API again to review the latest text. Conflicting output from multiple classes targeting the same file is reported before preview; choose separate packages or generate those classes separately.

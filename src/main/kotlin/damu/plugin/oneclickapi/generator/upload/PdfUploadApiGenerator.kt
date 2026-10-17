@@ -3,44 +3,26 @@
 
 package damu.plugin.oneclickapi.generator.upload
 
-import damu.plugin.oneclickapi.generator.ClassGenerator
-import damu.plugin.oneclickapi.util.GeneratorUtils
-import damu.plugin.oneclickapi.util.PackageUtils
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiDirectory
-import com.intellij.psi.PsiElementFactory
 
 object PdfUploadApiGenerator {
 
-    fun generatePdfUploadApi(
-        psiClass: PsiClass,
-        factory: PsiElementFactory,
-        directory: PsiDirectory,
-        packageName: String,
-        useLombok: Boolean
-    ) {
-        val httpServletResponseImport = getHttpServletResponseImport(psiClass)
-
-        // Create controller package
-        val controllerPackage = PackageUtils.createPackageIfNotExists(directory, "$packageName.controller")
-        val controllerContent =
-            generatePdfUploadControllerContent(controllerPackage, packageName, useLombok, httpServletResponseImport)
-        ClassGenerator.createClass(factory, controllerPackage, "PdfUploadController", controllerContent)
-
-        // Create service package
-        val servicePackage = PackageUtils.createPackageIfNotExists(directory, "$packageName.service")
-        val serviceContent = generatePdfServiceContent(servicePackage, packageName, httpServletResponseImport)
-        ClassGenerator.createClass(factory, servicePackage, "FilePdfService", serviceContent)
+    fun generateFiles(psiClass: PsiClass, packageName: String, useLombok: Boolean): Map<String, String> {
+        val responseImport = getHttpServletResponseImport(psiClass)
+        return mapOf(
+            "controller/PdfUploadController.java" to generatePdfUploadControllerContent("$packageName.controller", packageName, useLombok, responseImport),
+            "service/FilePdfService.java" to generatePdfServiceContent("$packageName.service", packageName, responseImport)
+        )
     }
 
     private fun generatePdfUploadControllerContent(
-        packageName: PsiDirectory,
+        packageName: String,
         rootPackageName: String,
         useLombok: Boolean,
         httpServletResponseImport: String
     ): String {
 
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(packageName)
+        val classPackageName = packageName
 
         return """
             package $classPackageName;
@@ -90,12 +72,12 @@ object PdfUploadApiGenerator {
     }
 
     private fun generatePdfServiceContent(
-        packageName: PsiDirectory,
+        packageName: String,
         rootPackageName: String,
         httpServletResponseImport: String
     ): String {
 
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(packageName)
+        val classPackageName = packageName
 
         return """
             package $classPackageName;

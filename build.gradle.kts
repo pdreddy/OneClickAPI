@@ -37,15 +37,22 @@ dependencies {
         testFramework(
             org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform
         )
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java)
 
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
     }
 
     implementation("org.freemarker:freemarker:2.3.32")
+    testImplementation("junit:junit:4.13.2")
 }
 
 tasks {
+    test {
+        // Keep Java plugin fixtures isolated from unrelated bundled IDE plugins (for example Vue).
+        systemProperty("idea.load.plugins.id", "damu.plugin.oneclickapi,com.intellij.java,org.jetbrains.kotlin")
+    }
+
     withType<JavaCompile> {
         options.release = 21
     }

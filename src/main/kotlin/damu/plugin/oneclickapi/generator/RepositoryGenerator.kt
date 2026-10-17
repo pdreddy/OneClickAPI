@@ -3,20 +3,18 @@
 
 package damu.plugin.oneclickapi.generator
 
-import damu.plugin.oneclickapi.util.GeneratorUtils
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiDirectory
 import com.intellij.psi.util.PsiUtil
 
 object RepositoryGenerator {
 
     fun generateRepositoryContent(
         psiClass: PsiClass,
-        repositoryPackage: PsiDirectory,
+        repositoryPackage: String,
         repoType: String
     ): String {
         val className = psiClass.name ?: return ""
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(repositoryPackage)
+        val classPackageName = repositoryPackage
         val entityPackageName = PsiUtil.getPackageName(psiClass) ?: return ""
 
         val (repositoryType, repositoryImport) = when (repoType) {

@@ -3,33 +3,16 @@
 
 package damu.plugin.oneclickapi.generator.upload
 
-import damu.plugin.oneclickapi.generator.ClassGenerator
-import damu.plugin.oneclickapi.util.PackageUtils
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiDirectory
-import com.intellij.psi.PsiElementFactory
 
 object ImageUploadApiGenerator {
 
-    fun generateImageUploadApi(
-        psiClass: PsiClass,
-        factory: PsiElementFactory,
-        directory: PsiDirectory,
-        packageName: String,
-        useLombok: Boolean
-    ) {
-
-        val httpServletResponseImport = getHttpServletResponseImport(psiClass)
-
-        // Create controller package
-        val controllerPackage = PackageUtils.createPackageIfNotExists(directory, "$packageName.controller")
-        val controllerContent = generateImageUploadControllerContent(packageName, useLombok, httpServletResponseImport)
-        ClassGenerator.createClass(factory, controllerPackage, "ImageUploadController", controllerContent)
-
-        // Create service package
-        val servicePackage = PackageUtils.createPackageIfNotExists(directory, "$packageName.service")
-        val serviceContent = generateImageServiceContent(packageName, httpServletResponseImport)
-        ClassGenerator.createClass(factory, servicePackage, "ImageService", serviceContent)
+    fun generateFiles(psiClass: PsiClass, packageName: String, useLombok: Boolean): Map<String, String> {
+        val responseImport = getHttpServletResponseImport(psiClass)
+        return mapOf(
+            "controller/ImageUploadController.java" to generateImageUploadControllerContent(packageName, useLombok, responseImport),
+            "service/ImageService.java" to generateImageServiceContent(packageName, responseImport)
+        )
     }
 
     private fun generateImageUploadControllerContent(

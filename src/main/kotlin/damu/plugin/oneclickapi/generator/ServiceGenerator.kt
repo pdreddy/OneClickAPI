@@ -3,26 +3,22 @@
 
 package damu.plugin.oneclickapi.generator
 
-import damu.plugin.oneclickapi.util.GeneratorUtils
 import damu.plugin.oneclickapi.util.TemplateEngine
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiDirectory
 import com.intellij.psi.util.PsiUtil
 
 object ServiceGenerator {
 
     fun generateServiceContent(
         psiClass: PsiClass,
-        servicePackage: PsiDirectory,
+        servicePackage: String,
         useLombok: Boolean,
         repoType: String
     ): String {
         val className = psiClass.name ?: return ""
 
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(servicePackage)
-        val parentDirectory = servicePackage.parentDirectory
-        val packageName =
-            if (parentDirectory != null) GeneratorUtils.getPackageNameFromDirectory(parentDirectory) else ""
+        val classPackageName = servicePackage
+        val packageName = servicePackage.substringBeforeLast(".", "")
         val entityPackageName = PsiUtil.getPackageName(psiClass) ?: ""
 
         val idType = ClassGenerator.getIdType(psiClass)

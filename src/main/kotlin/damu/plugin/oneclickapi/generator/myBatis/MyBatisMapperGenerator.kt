@@ -4,16 +4,14 @@
 package damu.plugin.oneclickapi.generator.myBatis
 
 import damu.plugin.oneclickapi.generator.ClassGenerator
-import damu.plugin.oneclickapi.util.GeneratorUtils
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiDirectory
 import com.intellij.psi.util.PsiUtil
 
 object MyBatisMapperGenerator {
 
-    fun generateMapperContent(psiClass: PsiClass, mapperPackage: PsiDirectory, useXmlMapper: Boolean): String {
+    fun generateMapperContent(psiClass: PsiClass, mapperPackage: String, useXmlMapper: Boolean): String {
         val className = psiClass.name ?: return ""
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(mapperPackage)
+        val classPackageName = mapperPackage
         val entityPackageName = PsiUtil.getPackageName(psiClass) ?: return ""
         val idType = ClassGenerator.getIdType(psiClass)
 

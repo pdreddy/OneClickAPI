@@ -4,20 +4,18 @@
 package damu.plugin.oneclickapi.generator.myBatis
 
 import damu.plugin.oneclickapi.generator.ClassGenerator
-import damu.plugin.oneclickapi.util.GeneratorUtils
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiDirectory
 import com.intellij.psi.util.PsiUtil
 
 object MyBatisServiceGenerator {
     fun generateServiceContent(
         psiClass: PsiClass,
-        servicePackage: PsiDirectory,
+        servicePackage: String,
         useLombok: Boolean
     ): String {
         val className = psiClass.name ?: return ""
-        val classPackageName = GeneratorUtils.getPackageNameFromDirectory(servicePackage)
-        val packageName = servicePackage.parentDirectory?.let { GeneratorUtils.getPackageNameFromDirectory(it) }
+        val classPackageName = servicePackage
+        val packageName = servicePackage.substringBeforeLast(".", "")
         val entityPackageName = PsiUtil.getPackageName(psiClass) ?: return ""
         val idType = ClassGenerator.getIdType(psiClass)
         val mapperPackage = "${packageName}.mapper"

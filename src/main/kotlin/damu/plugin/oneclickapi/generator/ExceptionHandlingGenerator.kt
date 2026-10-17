@@ -3,12 +3,10 @@
 
 package damu.plugin.oneclickapi.generator
 
-import damu.plugin.oneclickapi.util.GeneratorUtils
-import com.intellij.psi.PsiDirectory
 
 object ExceptionHandlingGenerator {
-    fun generateGlobalExceptionHandler(exceptionPackage: PsiDirectory): String {
-        val exceptionHandlerPackage = GeneratorUtils.getPackageNameFromDirectory(exceptionPackage)
+    fun generateGlobalExceptionHandler(exceptionPackage: String): String {
+        val exceptionHandlerPackage = exceptionPackage
         return """
         package $exceptionHandlerPackage;
 
