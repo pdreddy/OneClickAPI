@@ -128,12 +128,23 @@ object GenerationService {
             }
         }
         return files.filter { f ->
-            if (f.kind != FileKind.SOURCE || f.group != "shared") return@filter true
+            if (f.kind != FileKind.SOURCE) return@filter true
             val other = existing[f.fileName.removeSuffix(".java")]?.firstOrNull { it != f.path } ?: return@filter true
+            if (f.group != "shared") {
+                // Per-entity classes are not dropped (the user may be moving to a new layout on purpose), but a second
+                // Spring bean with the same name stops the app from starting, so say so before it is written.
+                if (BEAN_SUFFIXES.any { f.fileName.removeSuffix(".java").endsWith(it) }) {
+                    warnings += "${f.fileName} also exists in $other. Two classes with the same name make Spring fail at startup " +
+                        "(ConflictingBeanDefinitionException); delete one of them after generating."
+                }
+                return@filter true
+            }
             warnings += "${f.fileName} already exists in $other; the new copy in ${f.packageName} was not generated to avoid duplicate Spring beans."
             false
         }
     }
+
+    private val BEAN_SUFFIXES = listOf("Service", "Controller", "Repository", "Mapper", "ServiceImpl", "Config")
 
     private fun reloadBuild(project: Project) {
         ApplicationManager.getApplication().invokeLater {
