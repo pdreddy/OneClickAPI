@@ -21,6 +21,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClass
 import java.io.File
@@ -85,8 +86,8 @@ object GenerationService {
             return null
         }
 
-        val allFiles = plan.files.toMutableList()
         val warnings = plan.warnings.toMutableList()
+        val allFiles = dropDuplicateSharedClasses(plan.files, moduleDir, warnings).toMutableList()
         addDependencyEdit(models, options, profile, files, preview, allFiles, warnings)
 
         var policyFor: (PlannedFile) -> ConflictPolicy = { options.conflictPolicy }
@@ -107,6 +108,31 @@ object GenerationService {
         // resolves their imports instead of showing red until the user syncs by hand.
         if (allFiles.any { it.kind == FileKind.BUILD && it.path !in excluded }) reloadBuild(project)
         return report
+    }
+
+    /**
+     * Shared singletons (OpenApiConfig, GlobalExceptionHandler, ApiResult, ...) must exist once per application. If a class
+     * with the same simple name already lives in another package, e.g. from an earlier run with a different layout,
+     * generating it again makes Spring fail at startup with a ConflictingBeanDefinitionException, so it is left out.
+     */
+    private fun dropDuplicateSharedClasses(files: List<PlannedFile>, moduleDir: VirtualFile, warnings: MutableList<String>): List<PlannedFile> {
+        val existing = mutableMapOf<String, MutableList<String>>()
+        val javaRoot = moduleDir.findFileByRelativePath("src/main/java") ?: return files
+        ReadAction.run<RuntimeException> {
+            VfsUtilCore.iterateChildrenRecursively(javaRoot, null) { f ->
+                if (!f.isDirectory && f.name.endsWith(".java")) {
+                    existing.getOrPut(f.nameWithoutExtension) { mutableListOf() }
+                        .add(VfsUtilCore.getRelativePath(f, moduleDir, '/') ?: f.path)
+                }
+                true
+            }
+        }
+        return files.filter { f ->
+            if (f.kind != FileKind.SOURCE || f.group != "shared") return@filter true
+            val other = existing[f.fileName.removeSuffix(".java")]?.firstOrNull { it != f.path } ?: return@filter true
+            warnings += "${f.fileName} already exists in $other; the new copy in ${f.packageName} was not generated to avoid duplicate Spring beans."
+            false
+        }
     }
 
     private fun reloadBuild(project: Project) {
