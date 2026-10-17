@@ -136,6 +136,35 @@ class ProjectTest {
         assertFalse(r.any { it.lib == Lib.JPA })
     }
 
+    @Test
+    fun `a test starter does not count as the main starter`() {
+        val kts = """
+            plugins { id("org.springframework.boot") version "4.1.1" }
+            dependencies {
+                testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+                testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+            }
+        """.trimIndent()
+        val p = ProjectDetector.detect(mapOf("build.gradle.kts" to kts), listOf("org.springframework.boot:spring-boot-starter-webmvc-test:4.1.1"))
+        assertFalse("webmvc-test is not Spring MVC on the main classpath", p.has(Lib.WEB))
+        assertFalse("data-jpa-test is not Spring Data JPA on the main classpath", p.has(Lib.JPA))
+        assertTrue(p.has(Lib.WEBMVC_TEST))
+    }
+
+    @Test
+    fun `api tests need h2 and on boot 4 the webmvc test starter`() {
+        val o = GenerationOptions("p", tests = TestOptions(integrationTests = true))
+        val boot3 = DependencyAdvisor.required(listOf(SampleEntities.book), o, 3).map { it.lib }
+        assertTrue(Lib.H2 in boot3 && Lib.TEST in boot3)
+        assertFalse(Lib.WEBMVC_TEST in boot3)
+        assertTrue(Lib.WEBMVC_TEST in DependencyAdvisor.required(listOf(SampleEntities.book), o, 4).map { it.lib })
+        // MyBatis gets no API test, so no H2 either
+        assertFalse(Lib.H2 in DependencyAdvisor.required(listOf(SampleEntities.customer), o, 3).map { it.lib })
+        // the mapper test alone only needs JUnit
+        val mapperOnly = DependencyAdvisor.required(listOf(SampleEntities.book), GenerationOptions("p", tests = TestOptions(mapperTests = true)), 3).map { it.lib }
+        assertTrue(Lib.TEST in mapperOnly && Lib.H2 !in mapperOnly)
+    }
+
     private val deps = listOf(
         Dependency("org.springframework.boot", "spring-boot-starter-validation", null, Scope.IMPLEMENTATION, "@Valid"),
         Dependency("org.mapstruct", "mapstruct", "1.6.3", Scope.IMPLEMENTATION, "MapStruct"),

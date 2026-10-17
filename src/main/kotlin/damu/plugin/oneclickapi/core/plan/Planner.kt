@@ -35,13 +35,14 @@ class Planner(
         }
 
         val std = o.standards
+        val tests = GeneratedTests(profile, entities.associateBy { it.fqn })
         val needsHandler = o.exceptionHandling || std.standardResponse
 
         for ((index, entity) in entities.withIndex()) {
             val ctx = EntityContext(entity, o, profile)
             warnings += ctx.warnings
             if (o.crud) {
-                crud(ctx).forEach(::add)
+                crud(ctx, tests, warnings).forEach(::add)
                 if (entity.orm == OrmType.MYBATIS) {
                     warnings += "MyBatis: mapper XML is written to src/main/resources/mybatis/mappers/. " +
                             "Make sure application.properties has mybatis.mapper-locations=classpath:mybatis/mappers/*.xml " +
@@ -132,7 +133,7 @@ class Planner(
 
     // ------------------------------------------------------------------------------------------ CRUD
 
-    private fun crud(c: EntityContext): List<PlannedFile> {
+    private fun crud(c: EntityContext, tests: GeneratedTests, warnings: MutableList<String>): List<PlannedFile> {
         val out = mutableListOf<PlannedFile>()
         val o = c.o
         val n = c.name
@@ -167,6 +168,14 @@ class Planner(
         entityPatch(c)?.let { out += it }
         if (o.tests.serviceTests) out += serviceTest(c)
         if (o.tests.controllerTests) out += controllerTest(c)
+        if (o.tests.mapperTests) out += mapperTest(c, tests)
+        if (o.tests.integrationTests) {
+            if (!c.isJpa) warnings += "${c.name}: the full-stack API test is only generated for JPA entities."
+            else when (val api = tests.apiModel(c)) {
+                is GeneratedTests.Api.Ok -> out += apiTest(c, api.model)
+                is GeneratedTests.Api.Skipped -> warnings += "${c.name}: full-stack API test skipped - ${api.reason}."
+            }
+        }
         if (o.tests.httpFile) out += http(c)
         if (o.openApi.spec) out += openApiSpec(c)
         return out
@@ -434,6 +443,18 @@ class Planner(
         val pkg = c.pkg(c.o.layout.controller)
         val model = testModel(c) + mapOf("classPackageName" to pkg)
         return source(pkg, "${c.name}ControllerTest", templates.render("ControllerTest.java.ft", model), "JUnit 5 + MockMvc controller test", c.name, test = true)
+    }
+
+    private fun mapperTest(c: EntityContext, tests: GeneratedTests): PlannedFile {
+        val pkg = c.pkg(c.o.layout.mapper)
+        val model = baseModel(c) + tests.mapperModel(c) + mapOf("classPackageName" to pkg)
+        return source(pkg, "${c.dtoMapperName}Test", templates.render("MapperTest.java.ft", model), "JUnit 5 mapper test", c.name, test = true)
+    }
+
+    private fun apiTest(c: EntityContext, apiModel: Map<String, Any?>): PlannedFile {
+        val pkg = c.pkg(c.o.layout.controller)
+        val model = baseModel(c) + apiModel + mapOf("classPackageName" to pkg)
+        return source(pkg, "${c.name}ApiIntegrationTest", templates.render("ApiIntegrationTest.java.ft", model), "Full-stack API test (H2)", c.name, test = true)
     }
 
     private fun http(c: EntityContext): PlannedFile {

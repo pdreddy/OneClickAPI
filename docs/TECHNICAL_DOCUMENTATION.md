@@ -75,7 +75,7 @@ Because the plan is computed first and written second, the preview shows exactly
 | Audit fields | `createdAt` / `updatedAt` (Hibernate `@CreationTimestamp` / `@UpdateTimestamp` for JPA, set by the service for MyBatis). |
 | API versioning | `/api/v1/…`, `/api/…` with an `X-API-Version` header, or unversioned. |
 | Relations as ids | `ManyToOne`/`OneToOne` becomes `xId` (resolved with `EntityManager.getReference`), `OneToMany`/`ManyToMany` becomes read-only `xIds`; entities never appear inside DTOs, so there are no cycles. |
-| Tests | `XServiceTest` (JUnit 5 + Mockito), `XControllerTest` (standalone MockMvc: no Spring context, works on every Boot version), `http-requests/X.http` (IntelliJ HTTP Client, saves the created id for the following requests). |
+| Tests | `XServiceTest` (JUnit 5 + Mockito), `XControllerTest` (standalone MockMvc: no Spring context, works on every Boot version), `XMapperTest` (plain JUnit on the MapStruct or manual mapper), `XApiIntegrationTest` (`@SpringBootTest` + `@AutoConfigureMockMvc` on H2, rolled back per test; built by `GeneratedTests`, which creates the related rows a request needs and skips the test with a warning when it cannot, e.g. a required relation to an entity that is not generated in the same run or an id without `@GeneratedValue`; on Boot 4 it imports `@AutoConfigureMockMvc` from `spring-boot-webmvc-test`), `http-requests/X.http` (IntelliJ HTTP Client, saves the created id for the following requests). |
 | OpenAPI | Springdoc annotations (`@Tag`, `@Operation`, `@ApiResponses`, `@Schema`), `src/main/resources/openapi/x.yaml`, and an `OpenApiConfig` bean. |
 
 ## 3. `core.write` — safe re-generation

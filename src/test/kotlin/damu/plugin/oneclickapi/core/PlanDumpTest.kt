@@ -25,7 +25,13 @@ class PlanDumpTest {
         validation = true, pagination = true, standardResponse = true, softDelete = true, auditFields = true,
         versioning = ApiVersioning.PATH
     )
-    private val allTests = TestOptions(true, true, true)
+    private val allTests = TestOptions(
+        serviceTests = true, controllerTests = true, httpFile = true, mapperTests = true, integrationTests = true
+    )
+
+    /** The harness adds `com.acme.shop.ShopApplication` to every scenario; the API tests name it. */
+    private fun profile(major: Int, minor: Int = 0, patch: Int = 0) =
+        ProjectProfile(bootVersion = BootVersion(major, minor, patch), applicationClass = "com.acme.shop.ShopApplication")
     private val allDocs = OpenApiOptions(true, true, true)
 
     private fun opts(
@@ -90,7 +96,7 @@ class PlanDumpTest {
         )
     }
 
-    private val boot2 = ProjectProfile(bootVersion = BootVersion(2, 7, 18))
+    private val boot2 = profile(2, 7, 18)
 
     @Test
     fun `boot 2 javax configuration renders`() {
@@ -110,13 +116,29 @@ class PlanDumpTest {
         }
     }
 
+    @Test
+    fun `boot 4 configuration renders`() {
+        val options = opts(
+            lombok = true, standards = everything, tests = allTests, docs = allDocs, exceptionHandling = true
+        )
+        val project = SampleEntities.project()
+        val plan = Planner(profile(4, 1, 1)).plan(listOf(SampleEntities.book, SampleEntities.author), options)
+        val report = PlanExecutor(project).execute(plan.files, { options.conflictPolicy })
+        assertTrue(plan.files.any { it.content.contains("org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc") })
+        val dir = System.getProperty("generated.dir")?.let(::File) ?: return
+        val target = File(dir, "jpa-boot4")
+        target.deleteRecursively()
+        for ((path, text) in project.files) File(target, path).apply { parentFile.mkdirs() }.writeText(text)
+        File(target, "REPORT.md").writeText(report.toMarkdown() + "\n" + plan.warnings.joinToString("\n") { "- $it" })
+    }
+
     /**
      * The flow users hit: generate with the default layout, generate again with the layered one over the same
      * project, then delete the old classes the plugin lists. The result must compile and start without duplicate beans.
      */
     @Test
     fun `generating again with another layout`() {
-        val profile = ProjectProfile(bootVersion = BootVersion(3, 5))
+        val profile = profile(3, 5)
         val entities = listOf(SampleEntities.book, SampleEntities.author)
         val first = opts(lombok = true, standards = everything, tests = allTests, docs = allDocs, exceptionHandling = true)
         val second = first.copy(
@@ -150,7 +172,7 @@ class PlanDumpTest {
         for ((name, v) in variants) {
             val (entities, options) = v
             val project = SampleEntities.project()
-            val plan = Planner(ProjectProfile(bootVersion = BootVersion(3, 5))).plan(entities, options)
+            val plan = Planner(profile(3, 5)).plan(entities, options)
             val report = PlanExecutor(project).execute(plan.files, { options.conflictPolicy })
             if (dir != null) {
                 val target = File(dir, name)

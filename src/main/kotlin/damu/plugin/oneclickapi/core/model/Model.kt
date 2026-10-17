@@ -23,6 +23,8 @@ data class FieldModel(
     /** Imports needed to write [type] (java.lang excluded). */
     val imports: Set<String> = emptySet(),
     val isId: Boolean = false,
+    /** `@GeneratedValue` on the id: the database assigns it, so a new entity is saved without one. */
+    val generated: Boolean = false,
     val nullable: Boolean = true,
     /** Explicit `@Column(length = n)`. */
     val length: Int? = null,

@@ -32,8 +32,17 @@ object ProjectDetector {
         Triple(Lib.SPRINGDOC, "org.springdoc", "springdoc-openapi"),
         Triple(Lib.TEST, "org.springframework.boot", "spring-boot-starter-test"),
         Triple(Lib.TEST, "org.springframework.boot", "spring-boot-test"),
-        Triple(Lib.TEST, "org.springframework", "spring-test")
+        Triple(Lib.TEST, "org.springframework", "spring-test"),
+        Triple(Lib.H2, "com.h2database", "h2"),
+        Triple(Lib.WEBMVC_TEST, "org.springframework.boot", "spring-boot-starter-webmvc-test")
     )
+
+    /** Libraries a `-test` artifact may stand for; anything else (Web, JPA, ...) must come from a main starter. */
+    private val TEST_LIBS = setOf(Lib.TEST, Lib.WEBMVC_TEST)
+
+    /** `spring-boot-starter-webmvc-test` starts with `spring-boot-starter-webmvc` but does not put Spring MVC on the main classpath. */
+    private fun matches(lib: Lib, artifact: String, found: String): Boolean =
+        found.startsWith(artifact) && (lib in TEST_LIBS || !found.endsWith("-test"))
 
     /**
      * @param files module-relative build file name -> text (only those that exist)
@@ -46,14 +55,16 @@ object ProjectDetector {
         val libs = mutableSetOf<Lib>()
         // 1. build file text: group and artifact, in any of the usual notations
         for ((lib, group, artifact) in ARTIFACTS) {
-            if (Regex("""(?<![\w.-])${Regex.escape(artifact)}[\w-]*""").containsMatchIn(text)) libs += lib
+            Regex("""(?<![\w.-])${Regex.escape(artifact)}[\w-]*""").findAll(text).forEach { m ->
+                if (matches(lib, artifact, m.value)) libs += lib
+            }
         }
         // 2. what the IDE resolved
         for (c in libraryCoordinates) {
             val parts = c.split(':')
             if (parts.size < 2) continue
             for ((lib, group, artifact) in ARTIFACTS) {
-                if (parts[0] == group && parts[1].startsWith(artifact)) libs += lib
+                if (parts[0] == group && matches(lib, artifact, parts[1])) libs += lib
             }
         }
         // validation and Mockito arrive with their starters

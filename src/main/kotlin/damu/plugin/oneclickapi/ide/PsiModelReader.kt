@@ -106,6 +106,7 @@ object PsiModelReader {
             type = typeText,
             imports = imports,
             isId = field.persistence("Id", "EmbeddedId") != null,
+            generated = field.persistence("GeneratedValue") != null,
             nullable = nullable,
             length = column?.int("length"),
             columnName = column?.str("name") ?: joinColumn?.str("name"),

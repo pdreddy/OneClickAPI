@@ -80,9 +80,16 @@ data class TestOptions(
     /** JUnit 5 + MockMvc controller test. */
     val controllerTests: Boolean = false,
     /** IntelliJ HTTP Client request file per entity. */
-    val httpFile: Boolean = false
+    val httpFile: Boolean = false,
+    /** JUnit 5 test of the entity <-> DTO mapper (MapStruct or manual), relation ids included. */
+    val mapperTests: Boolean = false,
+    /** Full-stack API test per JPA entity: real controller, service, repository and an in-memory H2 database. */
+    val integrationTests: Boolean = false
 ) {
-    val any: Boolean get() = serviceTests || controllerTests || httpFile
+    val any: Boolean get() = serviceTests || controllerTests || httpFile || mapperTests || integrationTests
+
+    /** Tests that need JUnit, Mockito and the Spring test support on the test classpath. */
+    val needsTestLibs: Boolean get() = serviceTests || controllerTests || mapperTests || integrationTests
 }
 
 data class OpenApiOptions(

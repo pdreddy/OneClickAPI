@@ -18,7 +18,7 @@
 ##  New: Control and Quality
 - **Preview Before Generate**: see every file, its package and a diff before anything is written.
 - **Safe re-generation**: per file *Skip / Replace / Merge*, custom-code regions that survive regeneration, and a report of what happened.
-- **Tests with the backend**: JUnit 5 + Mockito service tests, MockMvc controller tests and ready-to-run IntelliJ `.http` request files.
+- **Tests with the backend**: JUnit 5 + Mockito service tests, MockMvc controller tests, mapper tests (every field and relation id between entity and DTOs), full-stack API tests that run the real controller, service and repository against an in-memory H2 database, and ready-to-run IntelliJ `.http` request files.
 - **OpenAPI**: Springdoc annotations, an OpenAPI 3 spec file and an `OpenApiConfig` bean.
 - **API standards**: Bean Validation, pagination/sorting/filtering/search, standard response and error format, soft delete, audit fields, API versioning, and relations as ids (no circular DTOs).
 - **Presets**: *Standard Spring Boot CRUD*, *Clean Architecture*, *Enterprise API*, *MyBatis Backend*, or your own in `.oneclickapi.yml` in the repository.

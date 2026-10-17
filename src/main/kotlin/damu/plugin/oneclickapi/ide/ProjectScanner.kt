@@ -2,11 +2,15 @@ package damu.plugin.oneclickapi.ide
 
 import damu.plugin.oneclickapi.core.project.ProjectDetector
 import damu.plugin.oneclickapi.core.project.ProjectProfile
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.AnnotatedElementsSearch
 
 /**
  * Reads the build file of the class's module and the libraries the IDE resolved for it, using only public
@@ -30,6 +34,17 @@ object ProjectScanner {
                 true
             }
         }
-        return ProjectDetector.detect(files, coordinates)
+        val profile = ProjectDetector.detect(files, coordinates)
+        return if (module == null) profile else profile.copy(applicationClass = applicationClass(module))
+    }
+
+    /** The module's `@SpringBootApplication` class; the full-stack API tests name it in `@SpringBootTest`. */
+    private fun applicationClass(module: Module): String? {
+        val annotation = JavaPsiFacade.getInstance(module.project).findClass(
+            "org.springframework.boot.autoconfigure.SpringBootApplication",
+            GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+        ) ?: return null
+        return AnnotatedElementsSearch.searchPsiClasses(annotation, GlobalSearchScope.moduleScope(module))
+            .findAll().mapNotNull { it.qualifiedName }.minOrNull()
     }
 }

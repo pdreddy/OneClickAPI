@@ -8,7 +8,7 @@ A preset is a named set of generator options. Put presets in a file called `.one
 |---|---|
 | **Standard Spring Boot CRUD** | Lombok, JPA repository, MapStruct, Bean Validation, service and controller tests. |
 | **Clean Architecture** | `web.controller`, `web.dto`, `web.mapper`, `application.service`, `infrastructure.persistence` packages; standard response and error format; validation; tests. |
-| **Enterprise API** | Everything: pagination and search, standard response and errors, soft delete, audit fields, validation, OpenAPI (annotations, spec, config), tests and `.http` files, exception handler, conflict policy *Merge*. |
+| **Enterprise API** | Everything: pagination and search, standard response and errors, soft delete, audit fields, validation, OpenAPI (annotations, spec, config), service, controller, mapper and full-stack API tests, `.http` files, exception handler, conflict policy *Merge*. |
 | **MyBatis Backend** | MyBatis-oriented defaults: pagination with `LIMIT`/`OFFSET`, standard response, validation, tests. Use it with plain POJO classes. |
 
 Pick one in the dialog (or use *Save as Preset...* to store your current settings under a name).
@@ -50,6 +50,8 @@ presets:
       service: true
       controller: true
       http: true
+      mapper: true                  # entity <-> DTO mapper test
+      integration: true             # full-stack API test on in-memory H2 (JPA)
     openApi:
       annotations: true
       spec: true

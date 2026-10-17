@@ -59,14 +59,17 @@ object BuiltInPresets {
     )
 
     val ENTERPRISE = Preset(
-        "Enterprise API", "Everything on: pagination and search, standard responses and errors, soft delete, audit fields, OpenAPI, tests and .http files.",
+        "Enterprise API", "Everything on: pagination and search, standard responses and errors, soft delete, audit fields, OpenAPI, service, controller, mapper and full-stack API tests and .http files.",
         m(
             "lombok" to "true", "repository" to "JPA Repository", "converter" to "MapStruct", "exceptionHandling" to "true",
             "standards" to m(
                 "validation" to "true", "pagination" to "true", "standardResponse" to "true", "softDelete" to "true",
                 "auditFields" to "true", "relationDtos" to "true", "versioning" to "path", "apiVersion" to "1"
             ),
-            "tests" to m("service" to "true", "controller" to "true", "http" to "true"),
+            "tests" to m(
+                "service" to "true", "controller" to "true", "http" to "true",
+                "mapper" to "true", "integration" to "true"
+            ),
             "openApi" to m("annotations" to "true", "spec" to "true", "config" to "true"),
             "onConflict" to "merge"
         ),
@@ -149,7 +152,9 @@ object PresetCodec {
                 tests = TestOptions(
                     serviceTests = t["service"].bool() ?: d.serviceTests,
                     controllerTests = t["controller"].bool() ?: d.controllerTests,
-                    httpFile = t["http"].bool() ?: d.httpFile
+                    httpFile = t["http"].bool() ?: d.httpFile,
+                    mapperTests = t["mapper"].bool() ?: d.mapperTests,
+                    integrationTests = t["integration"].bool() ?: d.integrationTests
                 )
             )
         }
@@ -194,7 +199,8 @@ object PresetCodec {
         )
         m["tests"] = linkedMapOf(
             "service" to o.tests.serviceTests.toString(), "controller" to o.tests.controllerTests.toString(),
-            "http" to o.tests.httpFile.toString()
+            "http" to o.tests.httpFile.toString(), "mapper" to o.tests.mapperTests.toString(),
+            "integration" to o.tests.integrationTests.toString()
         )
         m["openApi"] = linkedMapOf(
             "annotations" to o.openApi.annotations.toString(), "spec" to o.openApi.spec.toString(), "config" to o.openApi.config.toString()

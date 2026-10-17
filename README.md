@@ -52,7 +52,7 @@ Select multiple classes at once and generate hundreds or even thousands of APIs 
 ✅ **Boosted productivity:** Reduces repetitive tasks, letting developers focus on business logic  
 ✅ **Preview Before Generate:** see every file and a diff first; nothing is written until you confirm  
 ✅ **Safe re-generation:** Skip / Replace / Merge per file, custom-code regions are preserved, with a report  
-✅ **Tests, `.http` files and OpenAPI** generated with the backend  
+✅ **Tests, `.http` files and OpenAPI** generated with the backend: service, controller, mapper and full-stack API tests (H2)  
 ✅ **API standards:** validation, pagination/search, standard responses and errors, soft delete, audit fields, versioning, relations as ids  
 ✅ **Team presets** in `.oneclickapi.yml` and **automatic project detection** (Maven/Gradle, Boot version, JPA/MyBatis, MapStruct, Lombok, Liquibase/Flyway)
 

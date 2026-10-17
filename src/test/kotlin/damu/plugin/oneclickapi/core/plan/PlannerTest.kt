@@ -232,4 +232,49 @@ class PlannerTest {
             dir.deleteRecursively()
         }
     }
+
+    @Test
+    fun `mapper test covers plain fields and relation ids`() {
+        val o = GenerationOptions("com.acme.shop", tests = TestOptions(mapperTests = true))
+        val t = plan(listOf(SampleEntities.book, SampleEntities.author), o).file("mapper/BookMapperTest.java")
+        assertTrue(t.contains("Mappers.getMapper(BookMapper.class)"))
+        assertTrue(t.contains("request.setTitle(\"sample\");"))
+        assertTrue("ManyToOne is mapped to an id", t.contains("assertThat(response.getAuthorId()).isEqualTo(1L);"))
+        assertTrue("OneToMany is mapped to a list of ids", t.contains("assertThat(response.getReviewIds()).containsExactly(1L);"))
+        val manual = plan(listOf(SampleEntities.author), o.copy(converter = ConverterType.MANUAL)).file("mapper/AuthorMapperTest.java")
+        assertTrue(manual.contains("new AuthorMapper()"))
+    }
+
+    @Test
+    fun `api test creates the related rows a request needs`() {
+        val o = GenerationOptions("com.acme.shop", tests = TestOptions(integrationTests = true))
+        val p = Planner(profile.copy(applicationClass = "com.acme.shop.ShopApplication"), TemplateEngine(), { false }, clock)
+            .plan(listOf(SampleEntities.book, SampleEntities.author), o)
+        val t = p.files.single { it.path.endsWith("controller/BookApiIntegrationTest.java") }.content
+        assertTrue(t.contains("@SpringBootTest(classes = ShopApplication.class"))
+        assertTrue(t.contains("entityManager.persist(author1);"))
+        assertTrue(t.contains("\"authorId\\\":\" + author1.getId()"))
+        assertTrue(t.contains("org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc"))
+    }
+
+    @Test
+    fun `api test is skipped with a reason when a required related entity is not generated`() {
+        val o = GenerationOptions("com.acme.shop", tests = TestOptions(integrationTests = true))
+        val p = plan(listOf(SampleEntities.book), o)
+        assertTrue(p.paths().none { it.endsWith("BookApiIntegrationTest.java") })
+        assertTrue(p.warnings.any { it.contains("Book.author is required and Author is not generated") })
+        val mybatis = plan(listOf(SampleEntities.customer), o)
+        assertTrue(mybatis.warnings.any { it.contains("only generated for JPA entities") })
+        val noGeneratedId = plan(listOf(SampleEntities.author.copy(fields = SampleEntities.author.fields.map { it.copy(generated = false) })), o)
+        assertTrue(noGeneratedId.warnings.any { it.contains("not @GeneratedValue") })
+    }
+
+    @Test
+    fun `api test uses the boot 4 mockmvc package`() {
+        val o = GenerationOptions("com.acme.shop", tests = TestOptions(integrationTests = true))
+        val p = Planner(ProjectProfile(bootVersion = BootVersion(4, 1)), TemplateEngine(), { false }, clock).plan(listOf(SampleEntities.author), o)
+        val t = p.files.single { it.path.endsWith("AuthorApiIntegrationTest.java") }.content
+        assertTrue(t.contains("import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;"))
+        assertFalse("without a known application class Spring finds it itself", t.contains("classes ="))
+    }
 }

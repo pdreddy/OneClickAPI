@@ -17,7 +17,7 @@ object SampleEntities {
         sourcePath = "src/main/java/com/acme/shop/model/Author.java", tableName = "authors",
         lombokAccessors = true, jakartaPersistence = true,
         fields = listOf(
-            FieldModel("id", "Long", isId = true, nullable = false),
+            FieldModel("id", "Long", isId = true, generated = true, nullable = false),
             FieldModel("name", "String", nullable = false, length = 80),
             FieldModel(
                 "books", "List<Book>", imports = setOf("java.util.List"), relation = RelationKind.ONE_TO_MANY, inverse = true,
@@ -30,7 +30,7 @@ object SampleEntities {
         name = "Book", packageName = "com.acme.shop.model", orm = OrmType.JPA,
         sourcePath = "src/main/java/com/acme/shop/model/Book.java", jakartaPersistence = true,
         fields = listOf(
-            FieldModel("id", "Long", isId = true, nullable = false),
+            FieldModel("id", "Long", isId = true, generated = true, nullable = false),
             FieldModel("title", "String", nullable = false, length = 100),
             FieldModel(
                 "isbn", "String", validationAnnotations = listOf("@Size(min = 10, max = 13)"),

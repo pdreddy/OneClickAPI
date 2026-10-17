@@ -15,7 +15,7 @@
         New:
         - Preview Before Generate: every file, its package and a diff before anything is written
         - Safe re-generation: Skip / Replace / Merge per file, custom-code regions are kept, generation report
-        - JUnit 5 + Mockito + MockMvc tests and IntelliJ .http request files generated with the backend
+        - JUnit 5 + Mockito + MockMvc tests, mapper tests, full-stack API tests on in-memory H2 and IntelliJ .http request files generated with the backend
         - Springdoc / OpenAPI annotations and an OpenAPI 3 spec
         - API standards: Bean Validation, pagination/sorting/filtering/search, standard response and error format,
           soft delete, audit fields, API versioning, relations as ids (no circular DTOs)

@@ -13,7 +13,10 @@ enum class Lib(val display: String) {
     LIQUIBASE("Liquibase"),
     FLYWAY("Flyway"),
     SPRINGDOC("Springdoc OpenAPI"),
-    TEST("Spring Boot Test (JUnit 5, Mockito, MockMvc)")
+    TEST("Spring Boot Test (JUnit 5, Mockito, MockMvc)"),
+    H2("H2 in-memory database"),
+    /** Spring Boot 4 moved the MockMvc test support into its own starter. */
+    WEBMVC_TEST("Spring Boot WebMvc test starter")
 }
 
 data class BootVersion(val major: Int, val minor: Int = 0, val patch: Int = 0, val raw: String = "$major.$minor.$patch") {
@@ -38,7 +41,9 @@ data class ProjectProfile(
     /** Build file path relative to the module root (`pom.xml`, `build.gradle.kts`, ...). */
     val buildFile: String? = null,
     val bootVersion: BootVersion? = null,
-    val libs: Set<Lib> = emptySet()
+    val libs: Set<Lib> = emptySet(),
+    /** Fully qualified name of the module's `@SpringBootApplication` class, if one was found. */
+    val applicationClass: String? = null
 ) {
     /** Boot 3+ moved from javax.* to jakarta.*; unknown versions are assumed to be current. */
     val bootMajor: Int get() = bootVersion?.major ?: 3

@@ -71,8 +71,15 @@ object DependencyAdvisor {
         if (o.openApi.annotations || o.openApi.config) {
             out += Requirement(Lib.SPRINGDOC, "OpenAPI annotations", listOf(springdoc(boot)))
         }
-        if (o.tests.serviceTests || o.tests.controllerTests) {
+        if (o.tests.needsTestLibs) {
             out += Requirement(Lib.TEST, "JUnit 5, Mockito, MockMvc", listOf(Dependency("org.springframework.boot", "spring-boot-starter-test", null, Scope.TEST, "JUnit 5, Mockito, MockMvc")))
+        }
+        if (o.crud && o.tests.integrationTests && entities.any { it.orm == OrmType.JPA }) {
+            out += Requirement(Lib.H2, "In-memory database for the API tests", listOf(Dependency("com.h2database", "h2", null, Scope.TEST, "In-memory database for the API tests")))
+            // Boot 4 moved @AutoConfigureMockMvc out of spring-boot-test into its own module.
+            if (boot >= 4) {
+                out += Requirement(Lib.WEBMVC_TEST, "@AutoConfigureMockMvc (Spring Boot 4)", listOf(Dependency("org.springframework.boot", "spring-boot-starter-webmvc-test", null, Scope.TEST, "@AutoConfigureMockMvc (Spring Boot 4)")))
+            }
         }
         return out
     }
