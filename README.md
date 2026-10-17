@@ -47,7 +47,7 @@ Select multiple classes at once and generate hundreds or even thousands of APIs 
 ✅ **Advanced global exception handling** with auto-generated error controllers  
 ✅ **Multi-Class Selection:** Generate APIs for hundreds of classes simultaneously  
 ✅ **MyBatis Support:** Generate APIs from both POJO and `@Entity` classes  
-✅ **Liquibase Flexibility:** Generate database schemas in **YAML, SQL, XML, or JSON formats**  
+✅ **Liquibase:** Generate database changelogs in **XML or YAML**  
 ✅ **Highly customizable templates** for project-specific API generation  
 ✅ **Boosted productivity:** Reduces repetitive tasks, letting developers focus on business logic  
 ✅ **Preview Before Generate:** see every file and a diff first; nothing is written until you confirm  

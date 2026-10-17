@@ -1,63 +1,90 @@
 <idea-plugin>
     <id>damu.plugin.oneclickapi</id>
     <name>OneClickAPI</name>
-    <version>1.0.1</version>
+    <version>2.0.0</version>
     <vendor email="damup1985@gmail.com">Damodhara Reddy Palavali</vendor>
 
     <description>
         <![CDATA[
-        <h2>OneClickAPI - A powerful IntelliJ IDEA plugin that revolutionizes
-        API development for Spring Boot projects.</h2>
-        Generate complete REST APIs with advanced data management capabilities directly from
-        @Entity-annotated or POJO classes with just clicks. Select multiple classes at once,
-        and generate hundreds or even thousands of APIs in seconds!
+        <p><b>OneClickAPI</b> generates a complete, tested Spring Boot REST API from your <code>@Entity</code> or POJO classes:
+        DTOs, mapper, repository, service, controller, exception handling, OpenAPI docs and tests. Select one class or hundreds
+        and generate them in one go.</p>
 
-        New:
-        - Preview Before Generate: every file, its package and a diff before anything is written
-        - Safe re-generation: Skip / Replace / Merge per file, custom-code regions are kept, generation report
-        - JUnit 5 + Mockito + MockMvc tests, mapper tests, full-stack API tests on in-memory H2, an optional JaCoCo coverage report and IntelliJ .http request files generated with the backend
-        - Springdoc / OpenAPI annotations and an OpenAPI 3 spec
-        - API standards: Bean Validation, pagination/sorting/filtering/search, standard response and error format,
-          soft delete, audit fields, API versioning, relations as ids (no circular DTOs)
-        - Team presets in .oneclickapi.yml (Standard Spring Boot CRUD, Clean Architecture, Enterprise API, MyBatis Backend)
-        - Project detection (Maven/Gradle, Spring Boot version, JPA/MyBatis, MapStruct, Lombok, Liquibase/Flyway) with
-          optional dependency additions
-        - Works with IntelliJ IDEA 2024.2 and every newer release
+        <h3>What it generates</h3>
+        <ul>
+          <li>Request/Response DTOs, MapStruct or manual mapper, JPA or CRUD repository, service and REST controller</li>
+          <li>MyBatis mapper interface and XML for plain POJO classes</li>
+          <li>Global exception handling with a standard error format (<code>ApiError</code>) and success envelope (<code>ApiResult</code>)</li>
+          <li>Springdoc / OpenAPI annotations, an OpenAPI 3 spec file and an <code>OpenApiConfig</code> bean</li>
+          <li>Liquibase changelogs (XML or YAML)</li>
+          <li>Image and PDF upload endpoints</li>
+          <li>IntelliJ HTTP Client <code>.http</code> files, ready to run</li>
+        </ul>
 
-        Key Features:
-        - Automated API generation from JPA Entity or POJO classes
-        - Auto-creation of DTOs, Mappers, Repositories, Services & Controllers
-        - Lombok integration: Automatic annotations and boilerplate reduction
-        - Smart repository method generation (JPA/Custom implementations)
-        - Clean architecture enforcement with proper package structure
-        - File Upload APIs: Built-in PDF/Image upload endpoints generation
-        - Liquibase integration: Automated database schema management
-        - Enhanced Service Layer architecture for business logic isolation
-        - Robust exception handling: Auto-generated global error controllers
-        - **Multi-Class Selection:** Select hundreds of classes and generate thousands of APIs instantly
-        - **MyBatis Support:** Generate APIs from simple POJO classes in addition to @Entity classes
-        - **Liquibase Flexibility:** Generate database schemas in YAML, SQL, XML, or JSON formats
-        - **Advanced Global Exception Handling:** Automatically handles and customizes error responses
-        - **File Upload API Support:** Instantly generate APIs for PDF and image uploads
-        - **Clean Code & Best Practices:** Automatically follows clean architecture principles, ensuring readable, maintainable code
+        <h3>Tests and coverage</h3>
+        <ul>
+          <li>Service tests (JUnit 5 + Mockito) and controller tests (MockMvc)</li>
+          <li>Mapper tests: every field and relation id between entity and DTOs</li>
+          <li>Full-stack API tests: real controller, service and repository on an in-memory H2 database, including filters,
+              search and sorting; related rows a request needs are created automatically</li>
+          <li>Optional JaCoCo coverage report added to your build: <code>./gradlew test</code> prints the coverage of every class
+              and writes an HTML report and the XML report SonarQube reads</li>
+          <li>With all test options on, the generated tests cover about 95% of the lines of the generated code</li>
+        </ul>
 
-        How It Works:
-        1. Install plugin and right-click any @Entity or POJO class
-        2. Select "Generate API" from context menu
-        3. Configure options (enable file upload support, etc.)
-        4. Get production-ready APIs in seconds!
+        <h3>API standards, one click each</h3>
+        <ul>
+          <li>Bean Validation derived from the entity (<code>@NotNull</code>, <code>@NotBlank</code>, <code>@Size</code>, <code>@Email</code>)</li>
+          <li>Pagination, sorting, filtering and free-text search on list endpoints</li>
+          <li>Soft delete, audit fields (<code>createdAt</code> / <code>updatedAt</code>), API versioning by path or header</li>
+          <li>Relations exposed as ids, so DTOs never become circular</li>
+        </ul>
 
-        Why Choose OneClickAPI:
-        - 80% faster API development cycle
-        - Enterprise-grade code quality out of the box
-        - Future-proof architecture patterns
-        - Customizable templates for special requirements
-        - Seamless file handling capabilities
-        - Reduced maintenance overhead
-        - **Highly customizable:** Ability to tweak templates and adjust generated code based on project needs
-        - **Boosted productivity:** Simplifies complex tasks, letting developers focus on business logic instead of boilerplate code
-    ]]>
+        <h3>Safe on real projects</h3>
+        <ul>
+          <li><b>Preview before generate:</b> every file, its package and a diff before anything is written</li>
+          <li><b>Safe re-generation:</b> Skip / Replace / Merge per file; custom-code regions are kept; a report shows what changed</li>
+          <li>Generating again with another package layout reuses shared classes and lists the old files to delete, so Spring
+              never sees duplicate beans</li>
+          <li>Project detection (Maven/Gradle, Spring Boot 2, 3 and 4, JPA/MyBatis, MapStruct, Lombok, Liquibase/Flyway) and
+              missing dependencies added to your build file, followed by a Gradle/Maven reload</li>
+          <li>Team presets in <code>.oneclickapi.yml</code>: Standard Spring Boot CRUD, Clean Architecture, Enterprise API,
+              MyBatis Backend, or your own</li>
+        </ul>
+
+        <h3>How to use</h3>
+        <ol>
+          <li>Right-click an <code>@Entity</code> or POJO class (or select several) in the Project view or the editor</li>
+          <li>Choose <b>Generate API</b></li>
+          <li>Pick a preset or the options you want, check the preview, and generate</li>
+        </ol>
+
+        <p>Works with IntelliJ IDEA 2024.2 and every newer release.</p>
+        ]]>
     </description>
+
+    <change-notes>
+        <![CDATA[
+        <h3>2.0.0</h3>
+        <p>New generator engine.</p>
+        <ul>
+          <li><b>New:</b> preview before generate, with a diff per file</li>
+          <li><b>New:</b> safe re-generation (Skip / Replace / Merge, custom-code regions kept) and a generation report</li>
+          <li><b>New:</b> service, controller, mapper and full-stack API tests (H2), exception-handler tests and <code>.http</code> files</li>
+          <li><b>New:</b> optional JaCoCo coverage report with per-class coverage after <code>./gradlew test</code></li>
+          <li><b>New:</b> OpenAPI annotations, spec and config; pagination, filtering, search, sorting; soft delete; audit fields;
+              API versioning; standard response and error format</li>
+          <li><b>New:</b> team presets in <code>.oneclickapi.yml</code></li>
+          <li><b>New:</b> project detection and automatic dependency additions; Spring Boot 4 support</li>
+          <li><b>New:</b> <i>Generate API</i> directly in the Project view and editor right-click menus</li>
+          <li><b>Fixed:</b> duplicate Spring beans when generating again with another package layout</li>
+          <li><b>Fixed:</b> by-id endpoints failing when the project is not compiled with <code>-parameters</code></li>
+          <li><b>Fixed:</b> date filters rejected with 400 on Spring Boot 2</li>
+          <li><b>Fixed:</b> CRUD Repository option not compiling</li>
+          <li><b>Changed:</b> Liquibase changelogs are generated in XML and YAML (SQL and JSON are no longer offered)</li>
+        </ul>
+        ]]>
+    </change-notes>
 
 
     <!-- idea-version (since/until build) is written by patchPluginXml from build.gradle.kts -->
