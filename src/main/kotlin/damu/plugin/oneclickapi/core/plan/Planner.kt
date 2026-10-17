@@ -9,6 +9,7 @@ import damu.plugin.oneclickapi.core.model.decapFirst
 import damu.plugin.oneclickapi.core.options.ApiVersioning
 import damu.plugin.oneclickapi.core.options.ConflictPolicy
 import damu.plugin.oneclickapi.core.options.ConverterType
+import damu.plugin.oneclickapi.core.options.RepositoryType
 import damu.plugin.oneclickapi.core.options.GenerationOptions
 import damu.plugin.oneclickapi.core.project.ProjectProfile
 import java.time.LocalDateTime
@@ -278,6 +279,8 @@ class Planner(
         val pkg = c.pkg(c.o.layout.service)
         val model = baseModel(c) + mapOf(
             "classPackageName" to pkg,
+            // CrudRepository.findAll() returns an Iterable, JpaRepository's a List.
+            "iterableFindAll" to (c.o.repositoryType == RepositoryType.CRUD_REPOSITORY),
             "sortable" to c.sortable.map { it.first },
             "sortColumns" to c.sortable.map { mapOf("property" to it.first, "column" to it.second) },
             "searchable" to c.searchable.map { mapOf("name" to it.name) },

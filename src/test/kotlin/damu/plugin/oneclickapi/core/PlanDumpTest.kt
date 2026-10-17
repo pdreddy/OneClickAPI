@@ -1,10 +1,15 @@
 package damu.plugin.oneclickapi.core
 
 import damu.plugin.oneclickapi.core.options.*
+import damu.plugin.oneclickapi.core.plan.DuplicateClasses
+import damu.plugin.oneclickapi.core.plan.FileKind
 import damu.plugin.oneclickapi.core.plan.Planner
+import damu.plugin.oneclickapi.core.preset.BuiltInPresets
+import damu.plugin.oneclickapi.core.preset.PresetCodec
 import damu.plugin.oneclickapi.core.project.BootVersion
 import damu.plugin.oneclickapi.core.project.ProjectProfile
 import damu.plugin.oneclickapi.core.write.PlanExecutor
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeNotNull
 import org.junit.Test
 import java.io.File
@@ -62,8 +67,28 @@ class PlanDumpTest {
         "mybatis-basic" to (listOf(SampleEntities.customer) to opts(tests = allTests)),
         "mybatis-everything" to (listOf(SampleEntities.customer) to opts(
             lombok = true, converter = ConverterType.MANUAL, standards = everything, tests = allTests, docs = allDocs
+        )),
+        "jpa-uploads-crudrepo" to (listOf(SampleEntities.book, SampleEntities.author) to opts(exceptionHandling = true, tests = allTests).copy(
+            imageUpload = true, pdfUpload = true, repositoryType = RepositoryType.CRUD_REPOSITORY,
+            liquibase = LiquibaseOptions("db/changelog", "init", LiquibaseFormat.XML)
+        )),
+        "jpa-crudrepo-paged-soft" to (listOf(SampleEntities.book, SampleEntities.author) to opts(
+            standards = everything, tests = allTests, exceptionHandling = true
+        ).copy(repositoryType = RepositoryType.CRUD_REPOSITORY)),
+        "jpa-crudrepo-soft-unpaged" to (listOf(SampleEntities.book, SampleEntities.author) to opts(
+            standards = everything.copy(pagination = false), tests = allTests, exceptionHandling = true
+        ).copy(repositoryType = RepositoryType.CRUD_REPOSITORY)),
+        "mybatis-uploads" to (listOf(SampleEntities.customer) to opts(exceptionHandling = true, tests = allTests).copy(
+            imageUpload = true, pdfUpload = true
         ))
-    )
+    ) + BuiltInPresets.all.flatMap { preset ->
+        val key = "preset-" + preset.name.lowercase().replace(Regex("[^a-z]+"), "-").trim('-')
+        val options = PresetCodec.apply(opts(), preset.values).copy(conflictPolicy = ConflictPolicy.MERGE)
+        listOf(
+            "$key-jpa" to (listOf(SampleEntities.book, SampleEntities.author) to options),
+            "$key-mybatis" to (listOf(SampleEntities.customer) to options)
+        )
+    }
 
     private val boot2 = ProjectProfile(bootVersion = BootVersion(2, 7, 18))
 
@@ -83,6 +108,40 @@ class PlanDumpTest {
             for ((path, text) in project.files) File(target, path).apply { parentFile.mkdirs() }.writeText(text)
             File(target, "REPORT.md").writeText(report.toMarkdown())
         }
+    }
+
+    /**
+     * The flow users hit: generate with the default layout, generate again with the layered one over the same
+     * project, then delete the old classes the plugin lists. The result must compile and start without duplicate beans.
+     */
+    @Test
+    fun `generating again with another layout`() {
+        val profile = ProjectProfile(bootVersion = BootVersion(3, 5))
+        val entities = listOf(SampleEntities.book, SampleEntities.author)
+        val first = opts(lombok = true, standards = everything, tests = allTests, docs = allDocs, exceptionHandling = true)
+        val second = first.copy(
+            layout = PackageLayout(
+                controller = "web.controller", service = "application.service", repository = "infrastructure.persistence",
+                mapper = "web.mapper", persistence = "infrastructure.persistence", dto = "web.dto",
+                exception = "web.exception", config = "infrastructure.config"
+            )
+        )
+        val project = SampleEntities.project()
+        PlanExecutor(project).execute(Planner(profile).plan(entities, first).files, { first.conflictPolicy })
+
+        val plan = Planner(profile).plan(entities, second)
+        val checked = DuplicateClasses.check(plan.files, project.files.keys)
+        assertTrue("old per-entity classes are reported", checked.stale.any { it.endsWith("/service/BookService.java") })
+        assertTrue("old tests are reported", checked.stale.any { it.endsWith("/service/BookServiceTest.java") })
+        assertTrue("shared beans are reused", checked.files.none { it.group == "shared" && it.kind == FileKind.SOURCE })
+        PlanExecutor(project).execute(checked.files, { second.conflictPolicy })
+        checked.stale.forEach { project.files.remove(it) }
+
+        val dir = System.getProperty("generated.dir")?.let(::File) ?: return
+        val target = File(dir, "jpa-relayout")
+        target.deleteRecursively()
+        for ((path, text) in project.files) File(target, path).apply { parentFile.mkdirs() }.writeText(text)
+        File(target, "REPORT.md").writeText(checked.warnings.joinToString("\n") { "- $it" })
     }
 
     @Test

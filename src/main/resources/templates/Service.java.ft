@@ -46,6 +46,9 @@ import java.util.Optional;
 import java.util.Set;
 </#if>
 import java.util.stream.Collectors;
+<#if iterableFindAll>
+import java.util.stream.StreamSupport;
+</#if>
 
 @Service
 <#if lombok>
@@ -92,7 +95,11 @@ public class ${className}Service {
 <#else>
     public List<${className}Response> findAll() {
         log.debug("Request to get all ${className}s");
+<#if iterableFindAll>
+        return StreamSupport.stream(repository.findAll().spliterator(), false)
+<#else>
         return repository.findAll().stream()
+</#if>
 <#if soft>
                 .filter(entity -> !${isDeleted("entity")})
 </#if>

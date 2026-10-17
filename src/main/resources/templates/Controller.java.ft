@@ -87,12 +87,12 @@ public class ${className}Controller {
 </#if>
     @GetMapping("/{id}")
 <#if wrap>
-    public ResponseEntity<${R(className + "Response")}> findById(@PathVariable ${idType} id) {
+    public ResponseEntity<${R(className + "Response")}> findById(@PathVariable("id") ${idType} id) {
         log.info("REST request to get ${className} by id : {}", id);
         return ResponseEntity.ok(${B("service.findById(id)")});
     }
 <#else>
-    public ResponseEntity<${className}Response> findById(@PathVariable ${idType} id) {
+    public ResponseEntity<${className}Response> findById(@PathVariable("id") ${idType} id) {
         log.info("REST request to get ${className} by id : {}", id);
         return service.findById(id)
                 .map(ResponseEntity::ok)
@@ -107,9 +107,9 @@ public class ${className}Controller {
 <#if pagination>
     public ResponseEntity<${R("PageResponse<" + className + "Response>")}> findAll(
             <#if parameterObject>@ParameterObject </#if>@ModelAttribute ${className}Filter filter,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String sort
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "sort", required = false) String sort
     ) {
         log.info("REST request to search ${className}s : {}, page={}, size={}, sort={}", filter, page, size, sort);
         return ResponseEntity.ok(${B("service.findAll(filter, page, size, sort)")});
@@ -131,7 +131,7 @@ public class ${className}Controller {
 </#if>
     @PutMapping("/{id}")
     public ResponseEntity<${R(className + "Response")}> update(
-            @PathVariable ${idType} id,
+            @PathVariable("id") ${idType} id,
             @Valid @RequestBody ${className}Request request
     ) {
         log.info("REST request to update ${className} : {}, {}", id, request);
@@ -147,7 +147,7 @@ public class ${className}Controller {
     })
 </#if>
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable ${idType} id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") ${idType} id) {
         log.info("REST request to delete ${className} by id : {}", id);
         service.delete(id);
         return ResponseEntity.noContent().build();

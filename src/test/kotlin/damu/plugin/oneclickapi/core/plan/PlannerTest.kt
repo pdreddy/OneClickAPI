@@ -222,7 +222,7 @@ class PlannerTest {
 
     @Test
     fun `project template overrides win`() {
-        val dir = createTempDir()
+        val dir = kotlin.io.path.createTempDirectory().toFile()
         try {
             java.io.File(dir, "Repository.java.ft").writeText("package \${classPackageName};\n// custom template for \${className}\n")
             val p = Planner(profile, TemplateEngine(dir), { false }, clock).plan(listOf(SampleEntities.author), GenerationOptions("p"))

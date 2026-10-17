@@ -6,6 +6,7 @@ import damu.plugin.oneclickapi.core.options.GenerationOptions
 import damu.plugin.oneclickapi.core.plan.FileKind
 import damu.plugin.oneclickapi.core.plan.PlannedFile
 import damu.plugin.oneclickapi.core.plan.Planner
+import damu.plugin.oneclickapi.core.plan.DuplicateClasses
 import damu.plugin.oneclickapi.core.plan.TemplateEngine
 import damu.plugin.oneclickapi.core.preset.PresetStore
 import damu.plugin.oneclickapi.core.project.BuildFileEditor
@@ -110,41 +111,22 @@ object GenerationService {
         return report
     }
 
-    /**
-     * Shared singletons (OpenApiConfig, GlobalExceptionHandler, ApiResult, ...) must exist once per application. If a class
-     * with the same simple name already lives in another package, e.g. from an earlier run with a different layout,
-     * generating it again makes Spring fail at startup with a ConflictingBeanDefinitionException, so it is left out.
-     */
+    /** Clashes with classes left in other packages by an earlier run, see [DuplicateClasses]. */
     private fun dropDuplicateSharedClasses(files: List<PlannedFile>, moduleDir: VirtualFile, warnings: MutableList<String>): List<PlannedFile> {
-        val existing = mutableMapOf<String, MutableList<String>>()
-        val javaRoot = moduleDir.findFileByRelativePath("src/main/java") ?: return files
+        val existing = mutableListOf<String>()
         ReadAction.run<RuntimeException> {
-            VfsUtilCore.iterateChildrenRecursively(javaRoot, null) { f ->
-                if (!f.isDirectory && f.name.endsWith(".java")) {
-                    existing.getOrPut(f.nameWithoutExtension) { mutableListOf() }
-                        .add(VfsUtilCore.getRelativePath(f, moduleDir, '/') ?: f.path)
+            for (root in listOf("src/main/java", "src/test/java")) {
+                val dir = moduleDir.findFileByRelativePath(root) ?: continue
+                VfsUtilCore.iterateChildrenRecursively(dir, null) { f ->
+                    if (!f.isDirectory && f.name.endsWith(".java")) VfsUtilCore.getRelativePath(f, moduleDir, '/')?.let(existing::add)
+                    true
                 }
-                true
             }
         }
-        return files.filter { f ->
-            if (f.kind != FileKind.SOURCE) return@filter true
-            val other = existing[f.fileName.removeSuffix(".java")]?.firstOrNull { it != f.path } ?: return@filter true
-            if (f.group != "shared") {
-                // Per-entity classes are not dropped (the user may be moving to a new layout on purpose), but a second
-                // Spring bean with the same name stops the app from starting, so say so before it is written.
-                if (BEAN_SUFFIXES.any { f.fileName.removeSuffix(".java").endsWith(it) }) {
-                    warnings += "${f.fileName} also exists in $other. Two classes with the same name make Spring fail at startup " +
-                        "(ConflictingBeanDefinitionException); delete one of them after generating."
-                }
-                return@filter true
-            }
-            warnings += "${f.fileName} already exists in $other; the new copy in ${f.packageName} was not generated to avoid duplicate Spring beans."
-            false
-        }
+        val result = DuplicateClasses.check(files, existing)
+        warnings += result.warnings
+        return result.files
     }
-
-    private val BEAN_SUFFIXES = listOf("Service", "Controller", "Repository", "Mapper", "ServiceImpl", "Config")
 
     private fun reloadBuild(project: Project) {
         ApplicationManager.getApplication().invokeLater {

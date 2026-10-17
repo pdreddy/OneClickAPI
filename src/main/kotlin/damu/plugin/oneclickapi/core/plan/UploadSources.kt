@@ -205,7 +205,7 @@ internal object UploadSources {
                 }
 
                 @GetMapping(value = "/{id}", produces = MediaType.IMAGE_PNG_VALUE)
-                public void downloadPhoto(@PathVariable UUID id,
+                public void downloadPhoto(@PathVariable("id") UUID id,
                                           HttpServletResponse response) {
                     imageService.downloadImage(id, response);
                     response.setContentType(MediaType.IMAGE_PNG_VALUE);
@@ -315,14 +315,14 @@ internal object UploadSources {
 
                 @GetMapping
                 public ResponseEntity<List<FileDto>> getAllPdfs(
-                        @RequestParam(required = false, defaultValue = "0") int page,
-                        @RequestParam(required = false, defaultValue = "10") int size
+                        @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+                        @RequestParam(name = "size", required = false, defaultValue = "10") int size
                 ) {
                     return ResponseEntity.ok(filePdfService.getAllPdfs(page, size));
                 }
 
                 @GetMapping(value = "/{id}", produces = "application/pdf")
-                public void downloadPdf(@PathVariable UUID id,
+                public void downloadPdf(@PathVariable("id") UUID id,
                                         HttpServletResponse response) {
                     filePdfService.download(id, response);
                     response.setContentType("application/pdf");
