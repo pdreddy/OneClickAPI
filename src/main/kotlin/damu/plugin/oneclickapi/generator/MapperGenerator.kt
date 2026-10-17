@@ -22,11 +22,12 @@ object MapperGenerator {
 
     import org.mapstruct.Mapper;
     import org.mapstruct.MappingTarget;
+    import org.mapstruct.ReportingPolicy;
     import ${dtoPackage}.request.${className}Request;
     import ${dtoPackage}.response.${className}Response;
     import ${entityPackageName}.${className};
 
-    @Mapper
+    @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
     public interface ${className}Mapper {
         ${className}Response toResponse(${className} entity);
         ${className} toEntity(${className}Request dto);
