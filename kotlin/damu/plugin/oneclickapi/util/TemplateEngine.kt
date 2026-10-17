@@ -1,4 +1,4 @@
-// Copyright 2026 Damohara Reddy Palavali
+// Copyright 2026 Damodhara Reddy Palavali
 // SPDX-License-Identifier: Apache-2.0
 
 // damu.plugin.oneclickapi.util/TemplateEngine.kt

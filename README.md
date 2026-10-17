@@ -82,7 +82,7 @@ For more details, check the following documentation files:
 
 ## License
 
-OneClickAPI is free and open source under the [Apache License 2.0](./LICENSE). Copyright 2026 Damohara Reddy Palavali.
+OneClickAPI is free and open source under the [Apache License 2.0](./LICENSE). Copyright 2026 Damodhara Reddy Palavali.
 ---
 
 ## Support & Contributions
