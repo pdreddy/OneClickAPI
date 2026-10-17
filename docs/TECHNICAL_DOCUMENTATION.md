@@ -5,7 +5,7 @@ OneClickAPI is an IntelliJ IDEA plugin that generates a REST API layer (DTOs, ma
 The code is split in two halves so that the part that matters most can be tested without an IDE:
 
 ```
-az.mtech.autoapigen
+damu.plugin.oneclickapi
 ├── core/            no com.intellij imports - compiled and unit-tested on its own
 │   ├── model/       EntityModel, FieldModel: the plain data the generator works on
 │   ├── options/     GenerationOptions and everything the dialog can choose

@@ -1,8 +1,8 @@
 <idea-plugin>
-    <id>az.mtech.autoapigen</id>
+    <id>damu.plugin.oneclickapi</id>
     <name>OneClickAPI</name>
-    <version>2026091.7</version>
-    <vendor email="musanebiyev@gmail.com">Technovation Company</vendor>
+    <version>1.0.1</version>
+    <vendor email="damup1985@gmail.com">Damodhara Reddy Palavali</vendor>
 
     <description>
         <![CDATA[
@@ -70,8 +70,8 @@
     </extensions>
 
     <actions>
-        <action id="az.mtech.autoapigen.GenerateApiAction"
-                class="az.mtech.autoapigen.GenerateApiAction"
+        <action id="damu.plugin.oneclickapi.GenerateApiAction"
+                class="damu.plugin.oneclickapi.GenerateApiAction"
                 text="Generate API"
                 description="Generate code for entity classes">
             <add-to-group group-id="NewGroup" anchor="last"/>

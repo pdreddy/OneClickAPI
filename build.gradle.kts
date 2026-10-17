@@ -7,8 +7,8 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.18.1"
 }
 
-group = "az.mtech"
-version = "2026091.7"
+group = "damu.plugin"
+version = "1.0.1"
 
 kotlin {
     jvmToolchain(21)
