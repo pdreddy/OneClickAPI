@@ -1,4 +1,7 @@
-plugins { kotlin("jvm") version "2.3.20" }
+plugins {
+    kotlin("jvm") version "2.3.20"
+    jacoco
+}
 repositories { mavenCentral() }
 val repo = rootDir.resolve("../../../src").canonicalPath
 sourceSets {
@@ -14,3 +17,9 @@ tasks.test {
     systemProperty("generated.dir", rootDir.resolve("../build/generated").canonicalPath)
     testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
 }
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports { xml.required = true; html.required = true; csv.required = true }
+}
+tasks.test { finalizedBy(tasks.jacocoTestReport) }
