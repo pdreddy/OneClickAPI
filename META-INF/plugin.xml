@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>damu.plugin.oneclickapi</id>
     <name>OneClickAPI</name>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <vendor email="damup1985@gmail.com">Damodhara Reddy Palavali</vendor>
 
     <description>
@@ -29,11 +29,11 @@
     </description>
 
     <change-notes><![CDATA[
-        <b>1.0.0</b> - First public release as OneClickAPI: free, multi-class selection, JPA and MyBatis, Liquibase (XML/YAML), file upload APIs, global exception handling.
+        <b>1.0.1</b> - Broader IDE compatibility (no upper build limit), service/mapper generation fixes, ORM Type selector, base path option, Liquibase JSON/SQL.<br/><b>1.0.0</b> - First public release as OneClickAPI: free, multi-class selection, JPA and MyBatis, Liquibase (XML/YAML), file upload APIs, global exception handling.
     ]]></change-notes>
 
 
-    <idea-version since-build="242.0" until-build="262.*"/>
+    <idea-version since-build="242"/>
 
     <depends>com.intellij.modules.java</depends>
     <depends>com.intellij.modules.platform</depends>

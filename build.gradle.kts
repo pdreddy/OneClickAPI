@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "damu.plugin"
-version = "1.0.0"
+version = "1.0.1"
 
 kotlin {
     jvmToolchain(21)
@@ -51,8 +51,9 @@ tasks {
     }
 
     patchPluginXml {
-        sinceBuild.set("242.0")
-        untilBuild.set("262.*")
+        sinceBuild.set("242")
+        // No upper bound: JetBrains recommends omitting until-build so the plugin stays installable on new IDEs
+        untilBuild.set(provider { null })
     }
 
     signPlugin {
