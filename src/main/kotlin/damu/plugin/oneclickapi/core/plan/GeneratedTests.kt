@@ -108,6 +108,17 @@ internal class GeneratedTests(
         val checks = c.requestFields.filter { it.kind == DtoKind.PLAIN && it.sample != null && checkable(it) }
             .map { mapOf("name" to it.name, "value" to it.sample!!.let { s -> if (s.openApiType == "string") "\"${Samples.javaString(s.text)}\"" else s.text }) }
 
+        // List endpoint: one value per filter the created row matches, a search term and a sort, all run against H2.
+        val samples = c.requestFields.filter { it.kind == DtoKind.PLAIN && it.sample != null && checkable(it) }.associateBy { it.name }
+        val filters = c.filterFields.mapNotNull { f ->
+            when (f.mode) {
+                "REL" -> mapOf("name" to f.name, "fromResponse" to true)
+                else -> samples[f.name]?.let { mapOf("name" to f.name, "value" to Samples.javaString(it.sample!!.text), "fromResponse" to false) }
+            }
+        }
+        val search = c.searchable.firstNotNullOfOrNull { samples[it.name]?.sample?.text }
+        val sortBy = c.sortable.lastOrNull()?.first
+
         val itemPath = if (c.std.standardResponse) "$.data." else "$."
         val listPath = when {
             c.std.pagination -> itemPath + "content[0]."
@@ -127,6 +138,10 @@ internal class GeneratedTests(
                 "missingId" to missingId(e.idType),
                 "itemPath" to itemPath,
                 "listPath" to listPath,
+                "listContentPath" to listPath.removeSuffix("[0]."),
+                "filters" to if (c.std.pagination) filters else emptyList<Map<String, Any?>>(),
+                "search" to (if (c.std.pagination) search?.let(Samples::javaString) else null),
+                "sortBy" to (if (c.std.pagination) sortBy else null),
                 // Only Bean Validation turns an empty body into a 400; a NOT NULL column alone fails later, in the database.
                 "hasRequiredFields" to c.requestFields.any { it.annotations.any { a -> a.startsWith("@NotNull") || a.startsWith("@NotBlank") || a.startsWith("@NotEmpty") } }
             )

@@ -262,5 +262,9 @@ class ProjectTest {
         val noBuild = BuildFileEditor.addJacoco(BuildTool.MAVEN, pom)
         assertTrue(noBuild.contains("<build>") && noBuild.indexOf("jacoco-maven-plugin") < noBuild.indexOf("</project>"))
         assertEquals(noBuild, BuildFileEditor.addJacoco(BuildTool.MAVEN, noBuild))
+        // a project that is only named after JaCoCo still gets the plugin
+        val named = pom.replace("<artifactId>", "<artifactId>jacoco-").let { BuildFileEditor.addJacoco(BuildTool.MAVEN, it) }
+        assertTrue(named.contains("<artifactId>jacoco-maven-plugin</artifactId>"))
+        assertTrue(BuildFileEditor.addJacoco(BuildTool.GRADLE_GROOVY, "rootProject.name = 'jacoco-demo'\n").contains("apply plugin: 'jacoco'"))
     }
 }

@@ -63,7 +63,14 @@ class Planner(
             if (o.openApi.config) add(openApiConfig(any, o))
         }
 
-        if (needsHandler && entities.isNotEmpty()) add(exceptionHandler(EntityContext(entities.first(), o, profile), o))
+        if (needsHandler && entities.isNotEmpty()) {
+            val any = EntityContext(entities.first(), o, profile)
+            add(exceptionHandler(any, o))
+            if (o.tests.controllerTests) {
+                val pkg = any.pkg(o.layout.exception)
+                add(source(pkg, "GlobalExceptionHandlerTest", templates.render("ExceptionHandlerTest.java.ft", baseModel(any) + mapOf("classPackageName" to pkg)), "Exception handler test", test = true))
+            }
+        }
         else if (needsHandler) warnings += "Exception handling was requested but no class is selected to take the package from."
 
         if (o.tests.httpFile && files.keys.any { it.startsWith("http-requests/") }) {
@@ -212,11 +219,22 @@ class Planner(
         val imports = sortedSetOf<String>()
         c.filterFields.forEach { imports += it.imports }
         if (c.o.lombok) imports += listOf("lombok.Data", "lombok.NoArgsConstructor")
+        // Query parameters are bound with the default formatter, which is not ISO on every Boot version (Boot 2 rejects
+        // ?published=2024-01-15 with 400), so date and time filters say which format they expect.
+        fun dateFormat(type: String) = when (type) {
+            "LocalDate" -> "@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)"
+            "LocalDateTime", "OffsetDateTime", "ZonedDateTime" -> "@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)"
+            "LocalTime" -> "@DateTimeFormat(iso = DateTimeFormat.ISO.TIME)"
+            else -> null
+        }
+        if (c.filterFields.any { dateFormat(it.type) != null }) imports += "org.springframework.format.annotation.DateTimeFormat"
         val model = baseModel(c) + mapOf(
             "classPackageName" to pkg,
             "imports" to cleanImports(imports, pkg),
             "searchable" to c.searchable.map { it.name },
-            "fields" to c.filterFields.map { mapOf("name" to it.name, "type" to it.type, "getter" to it.getter, "setter" to it.setter) }
+            "fields" to c.filterFields.map {
+                mapOf("name" to it.name, "type" to it.type, "getter" to it.getter, "setter" to it.setter, "format" to dateFormat(it.type))
+            }
         )
         return source(pkg, "${c.name}Filter", templates.render("Filter.java.ft", model), "Query parameters of the list endpoint", c.name)
     }

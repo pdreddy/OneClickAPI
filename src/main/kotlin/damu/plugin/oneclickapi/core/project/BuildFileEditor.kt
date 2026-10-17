@@ -27,7 +27,7 @@ object BuildFileEditor {
      * `target/site/jacoco/index.html` (Maven). Returns [text] unchanged if the build already mentions JaCoCo.
      */
     fun addJacoco(tool: BuildTool, text: String): String {
-        if (text.contains("jacoco", ignoreCase = true)) return text
+        if (hasJacoco(tool, text)) return text
         return when (tool) {
             BuildTool.MAVEN -> addMavenJacoco(text)
             BuildTool.GRADLE_KOTLIN -> addGradleJacoco(text, kotlin = true)
@@ -35,6 +35,14 @@ object BuildFileEditor {
             BuildTool.UNKNOWN -> throw EditException("No pom.xml or build.gradle(.kts) found in the module.")
         }
     }
+
+    /** The build already applies JaCoCo (a project merely named "jacoco-..." does not count). */
+    fun hasJacoco(tool: BuildTool, text: String): Boolean = when (tool) {
+        BuildTool.MAVEN -> text.contains("<artifactId>jacoco-maven-plugin</artifactId>")
+        else -> Regex("""(?m)^\s*(id\s*\(?\s*["']jacoco["']|jacoco\s*$|`jacoco`|apply\s*\(?\s*plugin\s*[:=]\s*["']jacoco["'])""").containsMatchIn(maskComments(text))
+    }
+
+    private fun maskComments(text: String): String = text.replace(Regex("""//[^\n]*|/\*[\s\S]*?\*/"""), "")
 
     private fun addGradleJacoco(text: String, kotlin: Boolean): String {
         val nl = if (text.contains("\r\n")) "\r\n" else "\n"

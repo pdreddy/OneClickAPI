@@ -68,7 +68,7 @@ Under *API standards* you can switch on: Bean Validation annotations; pagination
 
 ## Tests and documentation
 
-Under *Tests and documentation*: JUnit 5 + Mockito service tests, JUnit 5 + MockMvc controller tests, mapper tests, full-stack API tests (JPA only: `@SpringBootTest` with MockMvc on an in-memory H2 database that replaces your datasource for the test; related rows a request needs are created first, and the test names your `@SpringBootApplication` class), an IntelliJ HTTP Client `.http` file per entity (run it straight from the editor; the first request stores the created id for the others), Springdoc/OpenAPI annotations, an OpenAPI 3 YAML file, and an `OpenApiConfig` bean.
+Under *Tests and documentation*: JUnit 5 + Mockito service tests, JUnit 5 + MockMvc controller tests, mapper tests, full-stack API tests (JPA only: `@SpringBootTest` with MockMvc on an in-memory H2 database that replaces your datasource for the test; related rows a request needs are created first, and the test names your `@SpringBootApplication` class; it also runs the list endpoint with real filter, search and sort values), a coverage report option (adds JaCoCo to the build file), an IntelliJ HTTP Client `.http` file per entity (run it straight from the editor; the first request stores the created id for the others), Springdoc/OpenAPI annotations, an OpenAPI 3 YAML file, and an `OpenApiConfig` bean.
 
 The generated tests need `spring-boot-starter-test`; the OpenAPI options need Springdoc. The dialog detects what your project already has (Maven or Gradle, Spring Boot version, JPA, MyBatis, MapStruct, Lombok, Liquibase, Flyway, ...) and, in the preview, offers to add what is missing to your `pom.xml` / `build.gradle(.kts)` as one more diff you can accept or untick.
 

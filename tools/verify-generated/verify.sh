@@ -21,6 +21,17 @@ for d in "$gen"/*/; do
   printf 'spring.liquibase.enabled=false\nspring.jpa.hibernate.ddl-auto=create-drop\nmybatis.mapper-locations=classpath:mybatis/mappers/*.xml\n' > "$d/src/main/resources/application.properties"
 done
 
+# The JaCoCo edit the plugin makes to a build file must give a coverage report in a real build.
+for tool in gradle-groovy gradle-kotlin maven; do
+  p="$here/build/jacoco-builds/$tool"
+  if [ "$tool" = maven ]; then
+    (cd "$p" && mvn -q -B test > build.log 2>&1); report="$p/target/site/jacoco/index.html"
+  else
+    "$gradlew" -p "$p" test -q > "$p/build.log" 2>&1; report="$p/build/reports/jacoco/test/html/index.html"
+  fi
+  if [ -f "$report" ]; then echo "JaCoCo edit, $tool: report written"; else echo "JaCoCo edit, $tool: NO REPORT (see $p/build.log)"; status_jacoco=1; fi
+done
+
 "$gradlew" -p "$here/projects" test --continue -q --max-workers=2 > "$here/build/projects.log" 2>&1
 status=0
 for d in "$gen"/*/; do
@@ -34,4 +45,5 @@ for d in "$gen"/*/; do
 done
 echo "Coverage counts only generated main classes; per-class HTML: build/generated/<scenario>/build/reports/jacoco/test/html/index.html"
 [ $status = 0 ] || echo "Some scenarios failed; compiler errors are in $here/build/projects.log, test reports in build/generated/<scenario>/build/reports"
+[ "${status_jacoco:-0}" = 0 ] || status=1
 exit $status

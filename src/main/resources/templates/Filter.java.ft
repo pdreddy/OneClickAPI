@@ -16,6 +16,9 @@ public class ${className}Filter {
 
 </#if>
 <#list fields as f>
+<#if f.format??>
+    ${f.format}
+</#if>
     private ${f.type} ${f.name};
 
 </#list>

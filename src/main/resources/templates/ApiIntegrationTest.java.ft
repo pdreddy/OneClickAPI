@@ -70,11 +70,14 @@ class ${className}ApiIntegrationTest {
         return ${body};
     }
 
-    private Object create() throws Exception {
-        String content = mockMvc.perform(json(post(URL)).content(validRequest()))
+    private String createAndReturnBody() throws Exception {
+        return mockMvc.perform(json(post(URL)).content(validRequest()))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        return JsonPath.read(content, "${itemPath}${idName}");
+    }
+
+    private Object create() throws Exception {
+        return JsonPath.read(createAndReturnBody(), "${itemPath}${idName}");
     }
 
     @Test
@@ -98,6 +101,44 @@ class ${className}ApiIntegrationTest {
                 .andExpect(jsonPath("${listPath}${idName}").exists());
     }
 
+<#if filters?has_content || search?? || sortBy??>
+    @Test
+    void findAll_withFiltersSearchAndSort_findsCreated() throws Exception {
+        String created = createAndReturnBody();
+        Object id = JsonPath.read(created, "${itemPath}${idName}");
+
+        mockMvc.perform(json(get(URL))
+<#list filters as f>
+<#if f.fromResponse>
+                        .param("${f.name}", String.valueOf((Object) JsonPath.read(created, "${itemPath}${f.name}")))
+<#else>
+                        .param("${f.name}", "${f.value}")
+</#if>
+</#list>
+<#if search??>
+                        .param("q", "${search}")
+</#if>
+<#if sortBy??>
+                        .param("sort", "${sortBy},desc")
+</#if>
+                        .param("page", "0")
+                        .param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${listPath}${idName}").value(id));
+    }
+
+<#if search??>
+    @Test
+    void findAll_withNonMatchingSearch_returnsEmptyPage() throws Exception {
+        create();
+
+        mockMvc.perform(json(get(URL)).param("q", "no-such-value-oneclickapi"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${listContentPath}").isEmpty());
+    }
+
+</#if>
+</#if>
     @Test
     void update_returnsOk() throws Exception {
         Object id = create();

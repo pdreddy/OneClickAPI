@@ -277,4 +277,12 @@ class PlannerTest {
         assertTrue(t.contains("import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;"))
         assertFalse("without a known application class Spring finds it itself", t.contains("classes ="))
     }
+
+    @Test
+    fun `date filters declare the iso format so every boot version binds them`() {
+        val o = GenerationOptions("com.acme.shop", standards = Standards(pagination = true))
+        val f = plan(listOf(SampleEntities.book), o).file("BookFilter.java")
+        assertTrue(f.contains("@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)\n    private LocalDate published;"))
+        assertTrue(f.contains("import org.springframework.format.annotation.DateTimeFormat;"))
+    }
 }
