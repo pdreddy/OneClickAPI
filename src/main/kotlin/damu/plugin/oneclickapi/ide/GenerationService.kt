@@ -1,0 +1,186 @@
+package damu.plugin.oneclickapi.ide
+
+import damu.plugin.oneclickapi.core.model.EntityModel
+import damu.plugin.oneclickapi.runRead
+import damu.plugin.oneclickapi.core.options.ConflictPolicy
+import damu.plugin.oneclickapi.core.options.GenerationOptions
+import damu.plugin.oneclickapi.core.plan.FileKind
+import damu.plugin.oneclickapi.core.plan.PlannedFile
+import damu.plugin.oneclickapi.core.plan.Planner
+import damu.plugin.oneclickapi.core.plan.DuplicateClasses
+import damu.plugin.oneclickapi.core.plan.TemplateEngine
+import damu.plugin.oneclickapi.core.preset.PresetStore
+import damu.plugin.oneclickapi.core.project.BuildFileEditor
+import damu.plugin.oneclickapi.core.project.BuildTool
+import damu.plugin.oneclickapi.core.project.DependencyAdvisor
+import damu.plugin.oneclickapi.core.write.GenerationReport
+import damu.plugin.oneclickapi.core.write.PlanExecutor
+import com.intellij.notification.NotificationGroupManager
+import com.intellij.notification.NotificationType
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.externalSystem.autoimport.ExternalSystemProjectTracker
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiClass
+import java.io.File
+
+/** Glue between the dialog, the platform-independent planner and the IDE: scan, plan, preview, write, report. */
+object GenerationService {
+
+    fun run(
+        project: Project,
+        selected: List<PsiClass>,
+        contextClass: PsiClass?,
+        options: GenerationOptions,
+        preview: Boolean,
+        projectRoot: VirtualFile?
+    ) {
+        // Features that need no class (exception handler, uploads) still need a module to write into.
+        val classes = if (selected.isNotEmpty()) selected else listOfNotNull(contextClass)
+        val effective = if (selected.isEmpty()) options.copy(crud = false, liquibase = null) else options
+        if (classes.isEmpty()) {
+            notify(project, "Select a class so the target module can be determined.", NotificationType.WARNING)
+            return
+        }
+
+        // (module directory or null, classes in it, names for the error message)
+        val groups = runRead {
+            classes.groupBy { ModuleLocator.baseDir(it)?.path }.map { (_, group) ->
+                Triple(ModuleLocator.baseDir(group.first()), group, group.joinToString { it.name ?: "?" })
+            }
+        }
+        val reports = mutableListOf<GenerationReport>()
+        for ((moduleDir, group, names) in groups) {
+            if (moduleDir == null) {
+                notify(project, "Cannot find src/main/java for $names; skipped.", NotificationType.WARNING)
+                continue
+            }
+            runForModule(project, group, moduleDir, effective, preview, projectRoot)?.let { reports += it }
+        }
+
+        if (reports.isEmpty()) return
+        val merged = GenerationReport(reports.flatMap { it.entries }, reports.flatMap { it.warnings }.distinct())
+        ReportDialog(project, merged).show()
+    }
+
+    private fun runForModule(
+        project: Project,
+        classes: List<PsiClass>,
+        moduleDir: VirtualFile,
+        options: GenerationOptions,
+        preview: Boolean,
+        projectRoot: VirtualFile?
+    ): GenerationReport? {
+        val (models, profile) = runRead {
+            classes.mapNotNull { PsiModelReader.read(it, moduleDir) } to ProjectScanner.scan(classes.first(), moduleDir)
+        }
+        val files = IdeProjectFiles(moduleDir)
+        val templates = projectRoot?.let { File(it.path, PresetStore.TEMPLATE_DIR) }?.takeIf { it.isDirectory }
+
+        val plan = try {
+            Planner(profile, TemplateEngine(templates), files::exists).plan(models, options)
+        } catch (e: Exception) {
+            notify(project, "Could not prepare the files: ${e.message}", NotificationType.ERROR)
+            return null
+        }
+
+        val warnings = plan.warnings.toMutableList()
+        val allFiles = dropDuplicateSharedClasses(plan.files, moduleDir, warnings).toMutableList()
+        addDependencyEdit(models, options, profile, files, allFiles, warnings)
+
+        var policyFor: (PlannedFile) -> ConflictPolicy = { options.conflictPolicy }
+        var excluded: Set<String> = emptySet()
+        if (preview) {
+            val dialog = PreviewDialog(project, allFiles, PlanExecutor(files), options.conflictPolicy, warnings)
+            if (!dialog.showAndGet()) return null
+            policyFor = dialog::policyFor
+            excluded = dialog.excludedPaths()
+        }
+
+        val report = WriteCommandAction.writeCommandAction(project)
+            .withName("Generate API")
+            .compute<GenerationReport, RuntimeException> {
+                PlanExecutor(files).execute(allFiles, policyFor, excluded, warnings)
+            }
+        // New dependencies (e.g. springdoc) were written to pom.xml / build.gradle: reload the build so the IDE
+        // resolves their imports instead of showing red until the user syncs by hand.
+        if (allFiles.any { it.kind == FileKind.BUILD && it.path !in excluded }) reloadBuild(project)
+        return report
+    }
+
+    /** Clashes with classes left in other packages by an earlier run, see [DuplicateClasses]. */
+    private fun dropDuplicateSharedClasses(files: List<PlannedFile>, moduleDir: VirtualFile, warnings: MutableList<String>): List<PlannedFile> {
+        val existing = mutableListOf<String>()
+        runRead {
+            for (root in listOf("src/main/java", "src/test/java")) {
+                val dir = moduleDir.findFileByRelativePath(root) ?: continue
+                VfsUtilCore.iterateChildrenRecursively(dir, null) { f ->
+                    if (!f.isDirectory && f.name.endsWith(".java")) VfsUtilCore.getRelativePath(f, moduleDir, '/')?.let(existing::add)
+                    true
+                }
+            }
+        }
+        val result = DuplicateClasses.check(files, existing)
+        warnings += result.warnings
+        return result.files
+    }
+
+    /** Saves the edited build file and asks Gradle/Maven to re-import, the same as the "Load changes" button. */
+    private fun reloadBuild(project: Project) {
+        ApplicationManager.getApplication().invokeLater {
+            try {
+                FileDocumentManager.getInstance().saveAllDocuments()
+                val tracker = ExternalSystemProjectTracker.getInstance(project)
+                tracker.markDirtyAllProjects()
+                tracker.scheduleProjectRefresh()
+            } catch (e: Exception) {
+                notify(project, "The build file was changed; reload the Gradle/Maven project to resolve the new dependencies.", NotificationType.INFORMATION)
+            }
+        }
+    }
+
+    private fun addDependencyEdit(
+        models: List<EntityModel>,
+        options: GenerationOptions,
+        profile: damu.plugin.oneclickapi.core.project.ProjectProfile,
+        files: IdeProjectFiles,
+        out: MutableList<PlannedFile>,
+        warnings: MutableList<String>
+    ) {
+        val missing = DependencyAdvisor.missing(DependencyAdvisor.required(models, options, profile.bootMajor), profile)
+        val coverage = options.tests.coverage
+        if (missing.isEmpty() && !coverage) return
+        val names = (missing.map { it.lib.display } + if (coverage) listOf("JaCoCo coverage report") else emptyList()).joinToString()
+        val buildFile = profile.buildFile
+        if (buildFile == null) {
+            warnings += "Missing in the build: $names. No pom.xml or build.gradle(.kts) found in the module, add them by hand."
+            return
+        }
+        // Without the preview the edit is still made: the user asked for these options, and the report lists the build file.
+        try {
+            val text = files.read(buildFile) ?: return
+            var updated = BuildFileEditor.addDependencies(profile.buildTool, text, missing.flatMap { it.dependencies })
+            if (coverage) updated = BuildFileEditor.addJacoco(profile.buildTool, updated)
+            if (updated != text) {
+                out.add(0, PlannedFile(buildFile, updated, FileKind.BUILD, "Adds to the build: $names", "build", ConflictPolicy.REPLACE))
+            }
+            if (coverage) {
+                val maven = profile.buildTool == BuildTool.MAVEN
+                val html = if (maven) "target/site/jacoco/index.html" else "build/reports/jacoco/test/html/index.html"
+                val xml = if (maven) "target/site/jacoco/jacoco.xml" else "build/reports/jacoco/test/jacocoTestReport.xml"
+                warnings += "Coverage: run ${if (maven) "mvn test" else "./gradlew test"} and open $html for the whole module. " +
+                    "SonarQube reads $xml (sonar.coverage.jacoco.xmlReportPaths)."
+            }
+        } catch (e: BuildFileEditor.EditException) {
+            warnings += "Missing in the build: $names. Could not edit $buildFile (${e.message}); add them by hand."
+        }
+    }
+
+    private fun notify(project: Project, message: String, type: NotificationType) {
+        NotificationGroupManager.getInstance().getNotificationGroup("OneClickAPI")
+            .createNotification(message, type).notify(project)
+    }
+}

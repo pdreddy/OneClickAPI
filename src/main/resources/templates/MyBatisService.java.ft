@@ -1,0 +1,153 @@
+package ${classPackageName};
+
+import ${pkg.persistence}.${className}Mapper;
+import ${pkg.mapper}.${dtoMapperName};
+import ${entityFqn};
+import ${pkg.dtoReq}.${className}Request;
+import ${pkg.dtoResp}.${className}Response;
+<#if wrap>
+import ${pkg.exception}.ResourceNotFoundException;
+</#if>
+<#if pagination>
+import ${pkg.dtoReq}.${className}Filter;
+import ${pkg.dtoRoot}.PageResponse;
+import java.util.Map;
+</#if>
+<#if audit>
+import java.time.LocalDateTime;
+</#if>
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+<#if lombok>
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+<#else>
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+</#if>
+
+import java.util.List;
+<#if !wrap>
+import java.util.Optional;
+</#if>
+import java.util.stream.Collectors;
+
+@Service
+<#if lombok>
+@Slf4j
+@RequiredArgsConstructor
+</#if>
+@Transactional(readOnly = true)
+public class ${className}Service {
+
+<#if !lombok>
+    private static final Logger log = LoggerFactory.getLogger(${className}Service.class);
+</#if>
+<#if pagination>
+    private static final int MAX_PAGE_SIZE = 100;
+    /** Sortable property -> column. Only these are ever put into the ORDER BY clause. */
+    private static final Map<String, String> SORT_COLUMNS = Map.ofEntries(<#list sortColumns as s>Map.entry("${s.property}", "${s.column}")<#sep>, </#sep></#list>);
+</#if>
+
+    private final ${className}Mapper mapper;
+    private final ${dtoMapperName} dtoMapper;
+
+<#if !lombok>
+    public ${className}Service(${className}Mapper mapper, ${dtoMapperName} dtoMapper) {
+        this.mapper = mapper;
+        this.dtoMapper = dtoMapper;
+    }
+
+</#if>
+<#if pagination>
+    public PageResponse<${className}Response> findAll(${className}Filter filter, int page, int size, String sort) {
+        log.debug("Request to search ${className}s : {}", filter);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        String property = "${idName}";
+        String direction = "ASC";
+        if (sort != null && !sort.isBlank()) {
+            String[] parts = sort.split(",");
+            if (SORT_COLUMNS.containsKey(parts[0].trim())) {
+                property = parts[0].trim();
+                direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim()) ? "DESC" : "ASC";
+            }
+        }
+        List<${className}Response> content = mapper
+                .findPage(filter, safePage * safeSize, safeSize, SORT_COLUMNS.get(property), direction)
+                .stream()
+                .map(dtoMapper::toResponse)
+                .collect(Collectors.toList());
+        return PageResponse.of(content, safePage, safeSize, mapper.count(filter));
+    }
+<#else>
+    public List<${className}Response> findAll() {
+        log.debug("Request to get all ${className}s");
+        return mapper.findAll().stream()
+                .map(dtoMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+</#if>
+
+<#if wrap>
+    public ${className}Response findById(${idType} id) {
+        log.debug("Request to get ${className} by id : {}", id);
+        ${className} entity = mapper.findById(id);
+        if (entity == null) {
+            throw new ResourceNotFoundException("${className}", id);
+        }
+        return dtoMapper.toResponse(entity);
+    }
+<#else>
+    public Optional<${className}Response> findById(${idType} id) {
+        log.debug("Request to get ${className} by id : {}", id);
+        return Optional.ofNullable(mapper.findById(id)).map(dtoMapper::toResponse);
+    }
+</#if>
+
+    @Transactional
+    public ${className}Response save(${className}Request request) {
+        log.debug("Request to save ${className} : {}", request);
+        ${className} entity = dtoMapper.toEntity(request);
+<#if createdSetter??>
+        entity.${createdSetter}(LocalDateTime.now());
+</#if>
+<#if updatedSetter??>
+        entity.${updatedSetter}(LocalDateTime.now());
+</#if>
+        mapper.insert(entity);
+        return dtoMapper.toResponse(entity);
+    }
+
+    @Transactional
+    public ${className}Response update(${idType} id, ${className}Request request) {
+        log.debug("Request to update ${className} by id : {}", id);
+        ${className} entity = mapper.findById(id);
+        if (entity == null) {
+<#if wrap>
+            throw new ResourceNotFoundException("${className}", id);
+<#else>
+            throw new RuntimeException("${className} not found with id " + id);
+</#if>
+        }
+        dtoMapper.updateFromDto(request, entity);
+<#if updatedSetter??>
+        entity.${updatedSetter}(LocalDateTime.now());
+</#if>
+        mapper.update(entity);
+        return dtoMapper.toResponse(entity);
+    }
+
+    @Transactional
+    public void delete(${idType} id) {
+        log.debug("Request to delete ${className} by id : {}", id);
+<#if wrap>
+        if (mapper.findById(id) == null) {
+            throw new ResourceNotFoundException("${className}", id);
+        }
+</#if>
+        mapper.delete(id);
+    }
+
+${customRegion}
+}

@@ -40,3 +40,38 @@ When generating APIs, you will be able to configure several options, including:
 - **Liquibase Integration:** Generate Liquibase changelogs for database migrations.
 - **File Upload API:** Automatically generate API endpoints for image or PDF file uploads.
 - **Exception Handling:** Add global exception handling for better error management.
+
+---
+
+## Preview Before Generate
+
+With *Preview files and changes before generating* ticked (the default) the **Generate** button first opens a preview:
+
+- every file that would be created, with its package or folder;
+- for files that already exist, what *Skip*, *Replace* and *Merge* would do, shown as a diff against the file on disk;
+- untick a file to leave it out, or change the action of a single file;
+- entity updates (soft delete / audit fields) and build-file changes (missing dependencies) appear in the same list.
+
+Nothing is written until you press **Generate**. The whole run is one undo step, and afterwards a report lists what was created, replaced, merged, skipped and left unchanged.
+
+## When files already exist
+
+| Choice | Behaviour |
+|---|---|
+| **Skip** | Keep your file. |
+| **Replace** | Overwrite it, but keep everything you wrote between `// region custom code` and `// endregion` (every generated class ends with that empty region). |
+| **Merge** | Keep your file and add only the methods, fields and imports that it does not have yet. Methods you edited are never touched. |
+
+## API standards
+
+Under *API standards* you can switch on: Bean Validation annotations; pagination, sorting, filtering and search; a standard success envelope and error body; soft delete; audit fields; API versioning (path or header); and relations exposed as ids so DTOs never become circular. See [TECHNICAL_DOCUMENTATION.md](./TECHNICAL_DOCUMENTATION.md#generated-output-by-option) for exactly what each one generates.
+
+## Tests and documentation
+
+Under *Tests and documentation*: JUnit 5 + Mockito service tests, JUnit 5 + MockMvc controller tests, mapper tests, full-stack API tests (JPA only: `@SpringBootTest` with MockMvc on an in-memory H2 database that replaces your datasource for the test; related rows a request needs are created first, and the test names your `@SpringBootApplication` class; it also runs the list endpoint with real filter, search and sort values), a coverage report option (adds JaCoCo to the build file), an IntelliJ HTTP Client `.http` file per entity (run it straight from the editor; the first request stores the created id for the others), Springdoc/OpenAPI annotations, an OpenAPI 3 YAML file, and an `OpenApiConfig` bean.
+
+The generated tests need `spring-boot-starter-test`; the OpenAPI options need Springdoc. The dialog detects what your project already has (Maven or Gradle, Spring Boot version, JPA, MyBatis, MapStruct, Lombok, Liquibase, Flyway, ...) and, in the preview, offers to add what is missing to your `pom.xml` / `build.gradle(.kts)` as one more diff you can accept or untick.
+
+## Presets
+
+Settings can be saved as a named preset and shared through `.oneclickapi.yml`; see [PRESETS.md](./PRESETS.md).

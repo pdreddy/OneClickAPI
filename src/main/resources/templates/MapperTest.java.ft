@@ -1,0 +1,89 @@
+package ${classPackageName};
+
+import ${entityFqn};
+import ${pkg.dtoReq}.${className}Request;
+import ${pkg.dtoResp}.${className}Response;
+<#list relationImports as i>
+import ${i};
+</#list>
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** Checks that every field survives the trip between ${className} and its DTOs, relation ids included. */
+class ${mapperName}Test {
+
+    private final ${mapperName} mapper = ${mapperInit};
+
+    @Test
+    void toEntity_copiesRequestFields() {
+        ${className}Request request = new ${className}Request();
+<#list requestValues as v>
+        request.${v.setter}(${v.value});
+</#list>
+
+        ${className} entity = mapper.toEntity(request);
+
+<#list requestValues as v>
+        assertThat(entity.${v.entityGetter}()).isEqualTo(${v.value});
+</#list>
+<#if !requestValues?has_content>
+        assertThat(entity).isNotNull();
+</#if>
+    }
+
+    @Test
+    void toResponse_copiesEntityFields() {
+        ${className} entity = new ${className}();
+        entity.${idSetter}(${idSample});
+<#list responseValues as v>
+        entity.${v.entitySetter}(${v.value});
+</#list>
+<#list relIds as r>
+        ${r.target} ${r.var} = new ${r.target}();
+        ${r.var}.${r.idSetter}(${r.id});
+        entity.${r.entitySetter}(${r.var});
+</#list>
+<#list relIdLists as r>
+        ${r.target} ${r.var} = new ${r.target}();
+        ${r.var}.${r.idSetter}(${r.id});
+        entity.${r.entitySetter}(${r.factory}(${r.var}));
+</#list>
+
+        ${className}Response response = mapper.toResponse(entity);
+
+        assertThat(response.get${idName?cap_first}()).isEqualTo(${idSample});
+<#list responseValues as v>
+        assertThat(response.${v.getter}()).isEqualTo(${v.value});
+</#list>
+<#list relIds as r>
+        assertThat(response.${r.responseGetter}()).isEqualTo(${r.id});
+</#list>
+<#list relIdLists as r>
+        assertThat(response.${r.responseGetter}()).containsExactly(${r.id});
+</#list>
+    }
+
+    @Test
+    void updateFromDto_keepsIdAndAppliesRequest() {
+        ${className} entity = new ${className}();
+        entity.${idSetter}(${idSample});
+        ${className}Request request = new ${className}Request();
+<#list requestValues as v>
+        request.${v.setter}(${v.value});
+</#list>
+
+        mapper.updateFromDto(request, entity);
+
+        assertThat(entity.get${idName?cap_first}()).isEqualTo(${idSample});
+<#list requestValues as v>
+        assertThat(entity.${v.entityGetter}()).isEqualTo(${v.value});
+</#list>
+    }
+
+    @Test
+    void nullInput_mapsToNull() {
+        assertThat(mapper.toResponse(null)).isNull();
+        assertThat(mapper.toEntity(null)).isNull();
+    }
+}

@@ -1,0 +1,81 @@
+package ${classPackageName};
+
+<#if wrap>
+import ${pkg.dtoRoot}.ApiError;
+</#if>
+import org.junit.jupiter.api.Test;
+<#if wrap>
+import org.springframework.dao.DataIntegrityViolationException;
+</#if>
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+<#if wrap>
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+<#else>
+import org.springframework.core.MethodParameter;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import java.util.Map;
+</#if>
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** The error paths the API tests do not reach: each handler gives the right status and body. */
+class GlobalExceptionHandlerTest {
+
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+<#if wrap>
+    private final WebRequest request = new ServletWebRequest(new MockHttpServletRequest("GET", "/api/items/1"));
+
+    @Test
+    void notFound_returns404WithPath() {
+        ResponseEntity<ApiError> response = handler.handleNotFound(new ResourceNotFoundException("Item", 1L), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThat(response.getBody().getStatus()).isEqualTo(404);
+        assertThat(response.getBody().getPath()).isEqualTo("/api/items/1");
+    }
+
+    @Test
+    void dataIntegrityViolation_returns409() {
+        ResponseEntity<ApiError> response = handler.handleConflict(new DataIntegrityViolationException("duplicate key"), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(response.getBody().getMessage()).isEqualTo("The request conflicts with existing data");
+    }
+
+    @Test
+    void unexpectedError_returns500WithoutLeakingDetails() {
+        ResponseEntity<ApiError> response = handler.handleUnexpected(new IllegalStateException("secret internals"), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        assertThat(response.getBody().getMessage()).doesNotContain("secret internals");
+    }
+<#else>
+
+    @Test
+    void unexpectedError_returns500() {
+        ResponseEntity<String> response = handler.handleGeneralException(new IllegalStateException("boom"));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        assertThat(response.getBody()).contains("boom");
+    }
+
+    @Test
+    void validationError_returns400WithFieldMessages() throws Exception {
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new Object(), "request");
+        result.addError(new FieldError("request", "name", "must not be blank"));
+        MethodParameter parameter = new MethodParameter(Object.class.getMethod("toString"), -1);
+
+        ResponseEntity<Map<String, String>> response =
+                handler.handleValidationExceptions(new MethodArgumentNotValidException(parameter, result));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(response.getBody()).containsEntry("name", "must not be blank");
+    }
+</#if>
+}

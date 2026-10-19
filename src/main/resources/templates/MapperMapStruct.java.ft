@@ -1,0 +1,32 @@
+package ${classPackageName};
+
+import ${entityFqn};
+import ${pkg.dtoReq}.${className}Request;
+import ${pkg.dtoResp}.${className}Response;
+import org.mapstruct.Mapper;
+<#if hasMappings>
+import org.mapstruct.Mapping;
+</#if>
+import org.mapstruct.MappingTarget;
+import org.mapstruct.ReportingPolicy;
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface ${mapperName} {
+
+<#list responseMappings as m>
+    ${m}
+</#list>
+    ${className}Response toResponse(${className} entity);
+
+<#list requestMappings as m>
+    ${m}
+</#list>
+    ${className} toEntity(${className}Request dto);
+
+<#list requestMappings as m>
+    ${m}
+</#list>
+    void updateFromDto(${className}Request dto, @MappingTarget ${className} entity);
+
+${customRegion}
+}

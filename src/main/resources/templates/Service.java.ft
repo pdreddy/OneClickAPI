@@ -1,20 +1,33 @@
+<#function isDeleted v><#return deletedPrimitive?then(v + "." + deletedGetter + "()", "Boolean.TRUE.equals(" + v + "." + deletedGetter + "())")></#function>
 package ${classPackageName};
 
+import ${pkg.repository}.${className}Repository;
+import ${pkg.mapper}.${mapperName};
+import ${entityFqn};
+import ${pkg.dtoReq}.${className}Request;
+import ${pkg.dtoResp}.${className}Response;
+<#if wrap>
+import ${pkg.exception}.ResourceNotFoundException;
+</#if>
+<#if pagination>
+import ${pkg.dtoReq}.${className}Filter;
+import ${pkg.dtoRoot}.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import ${persistencePkg}.criteria.Predicate;
+</#if>
+<#if relations?size gt 0>
+import ${persistencePkg}.EntityManager;
+<#list relationImports as r>
+import ${r};
+</#list>
+</#if>
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-<#if repoType == "JPA">
-import ${repositoryPackage}.${className}Repository;
-</#if>
-import ${mapperPackage}.${className}Mapper;
-import ${entityPackageName}.${className};
-import ${dtoPackage}.request.${className}Request;
-import ${dtoPackage}.response.${className}Response;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-<#if useLombok>
+<#if lombok>
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 <#else>
@@ -22,89 +35,212 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 </#if>
 
+<#if pagination>
+import java.util.ArrayList;
+</#if>
+import java.util.List;
+<#if !wrap>
+import java.util.Optional;
+</#if>
+<#if pagination>
+import java.util.Set;
+</#if>
+import java.util.stream.Collectors;
+<#if iterableFindAll>
+import java.util.stream.StreamSupport;
+</#if>
+
 @Service
-<#if useLombok>
+<#if lombok>
 @Slf4j
 @RequiredArgsConstructor
 </#if>
 @Transactional(readOnly = true)
 public class ${className}Service {
 
-    <#if !useLombok>
+<#if !lombok>
     private static final Logger log = LoggerFactory.getLogger(${className}Service.class);
-    </#if>
+</#if>
+<#if pagination>
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final Set<String> SORTABLE_FIELDS = Set.of(<#list sortable as s>"${s}"<#sep>, </#sep></#list>);
+</#if>
 
-    <#if repoType == "JPA">
     private final ${className}Repository repository;
-    </#if>
-    private final ${className}Mapper mapper;
+    private final ${mapperName} mapper;
+<#if relations?size gt 0>
+    private final EntityManager entityManager;
+</#if>
 
-    <#if !useLombok>
-    public ${className}Service(<#if repoType == "JPA">${className}Repository repository, </#if>${className}Mapper mapper) {
-        <#if repoType == "JPA">
+<#if !lombok>
+    public ${className}Service(${className}Repository repository, ${mapperName} mapper<#if relations?size gt 0>, EntityManager entityManager</#if>) {
         this.repository = repository;
-        </#if>
         this.mapper = mapper;
+<#if relations?size gt 0>
+        this.entityManager = entityManager;
+</#if>
     }
-    </#if>
 
+</#if>
+<#if pagination>
+    public PageResponse<${className}Response> findAll(${className}Filter filter, int page, int size, String sort) {
+        log.debug("Request to search ${className}s : {}", filter);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), toSort(sort));
+        Page<${className}> result = repository.findAll(toSpecification(filter), pageable);
+        List<${className}Response> content = result.getContent().stream()
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
+        return PageResponse.of(content, result.getNumber(), result.getSize(), result.getTotalElements());
+    }
+<#else>
     public List<${className}Response> findAll() {
         log.debug("Request to get all ${className}s");
-        <#if repoType == "JPA">
-        return repository.findAll()
-        <#else>
-        return mapper.findAll() <#-- MyBatis-də birbaşa mapper-dən çağırırıq -->
-        </#if>
-                .stream()
+<#if iterableFindAll>
+        return StreamSupport.stream(repository.findAll().spliterator(), false)
+<#else>
+        return repository.findAll().stream()
+</#if>
+<#if soft>
+                .filter(entity -> !${isDeleted("entity")})
+</#if>
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
+</#if>
 
+<#if wrap>
+    public ${className}Response findById(${idType} id) {
+        log.debug("Request to get ${className} by id : {}", id);
+        return repository.findById(id)
+<#if soft>
+                .filter(entity -> !${isDeleted("entity")})
+</#if>
+                .map(mapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("${className}", id));
+    }
+<#else>
     public Optional<${className}Response> findById(${idType} id) {
         log.debug("Request to get ${className} by id : {}", id);
-        <#if repoType == "JPA">
-        return repository.findById(id).map(mapper::toResponse);
-        <#else>
-        return mapper.findById(id).map(mapper::toResponse);
-        </#if>
+        return repository.findById(id)
+<#if soft>
+                .filter(entity -> !${isDeleted("entity")})
+</#if>
+                .map(mapper::toResponse);
     }
+</#if>
 
     @Transactional
     public ${className}Response save(${className}Request request) {
         log.debug("Request to save ${className} : {}", request);
         ${className} entity = mapper.toEntity(request);
-        <#if repoType == "JPA">
-        repository.save(entity);
-        <#else>
-        mapper.insert(entity); <#-- MyBatis stili -->
-        </#if>
-        return mapper.toResponse(entity);
+<#if relations?size gt 0>
+        applyRelations(entity, request);
+</#if>
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Transactional
     public ${className}Response update(${idType} id, ${className}Request request) {
         log.debug("Request to update ${className} by id : {}", id);
-        <#if repoType == "JPA">
-        ${className} existingEntity = repository.findById(id)
+        ${className} entity = repository.findById(id)
+<#if soft>
+                .filter(existing -> !${isDeleted("existing")})
+</#if>
+<#if wrap>
+                .orElseThrow(() -> new ResourceNotFoundException("${className}", id));
+<#else>
                 .orElseThrow(() -> new RuntimeException("${className} not found with id " + id));
-        mapper.updateFromDto(request, existingEntity);
-        repository.save(existingEntity);
-        <#else>
-        ${className} existingEntity = mapper.findById(id)
-                .orElseThrow(() -> new RuntimeException("${className} not found with id " + id));
-        mapper.updateFromDto(request, existingEntity);
-        mapper.update(existingEntity);
-        </#if>
-        return mapper.toResponse(existingEntity);
+</#if>
+        mapper.updateFromDto(request, entity);
+<#if relations?size gt 0>
+        applyRelations(entity, request);
+</#if>
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Transactional
     public void delete(${idType} id) {
         log.debug("Request to delete ${className} by id : {}", id);
-        <#if repoType == "JPA">
+<#if soft>
+        ${className} entity = repository.findById(id)
+                .filter(existing -> !${isDeleted("existing")})
+<#if wrap>
+                .orElseThrow(() -> new ResourceNotFoundException("${className}", id));
+<#else>
+                .orElseThrow(() -> new RuntimeException("${className} not found with id " + id));
+</#if>
+        entity.setDeleted(true);
+        repository.save(entity);
+<#elseif wrap>
+        if (!repository.existsById(id)) {
+            throw new ResourceNotFoundException("${className}", id);
+        }
         repository.deleteById(id);
-        <#else>
-        mapper.deleteById(id);
-        </#if>
+<#else>
+        repository.deleteById(id);
+</#if>
     }
+<#if relations?size gt 0>
+
+    private void applyRelations(${className} entity, ${className}Request request) {
+<#list relations as r>
+        entity.${r.setter}(request.${r.dtoGetter}() == null ? null : entityManager.getReference(${r.target}.class, request.${r.dtoGetter}()));
+</#list>
+    }
+</#if>
+<#if pagination>
+
+    private static Sort toSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.by("${idName}");
+        }
+        String[] parts = sort.split(",");
+        String property = parts[0].trim();
+        if (!SORTABLE_FIELDS.contains(property)) {
+            return Sort.by("${idName}");
+        }
+        boolean descending = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim());
+        return descending ? Sort.by(property).descending() : Sort.by(property).ascending();
+    }
+
+    private Specification<${className}> toSpecification(${className}Filter filter) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+<#if soft>
+            predicates.add(cb.isFalse(root.get("deleted")));
+</#if>
+            if (filter == null) {
+                return cb.and(predicates.toArray(new Predicate[0]));
+            }
+<#if searchable?size gt 0>
+            if (filter.getQ() != null && !filter.getQ().isBlank()) {
+                String pattern = "%" + filter.getQ().trim().toLowerCase() + "%";
+                predicates.add(cb.or(
+<#list searchable as s>
+                        cb.like(cb.lower(root.<String>get("${s.name}")), pattern)<#sep>,</#sep>
+</#list>
+                ));
+            }
+</#if>
+<#list filterFields as f>
+<#if f.mode == "STRING">
+            if (filter.${f.getter}() != null && !filter.${f.getter}().isBlank()) {
+                predicates.add(cb.like(cb.lower(root.<String>get("${f.name}")), "%" + filter.${f.getter}().trim().toLowerCase() + "%"));
+            }
+<#elseif f.mode == "REL">
+            if (filter.${f.getter}() != null) {
+                predicates.add(cb.equal(root.get("${f.relationProperty}").get("${f.relationIdName}"), filter.${f.getter}()));
+            }
+<#else>
+            if (filter.${f.getter}() != null) {
+                predicates.add(cb.equal(root.get("${f.name}"), filter.${f.getter}()));
+            }
+</#if>
+</#list>
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+</#if>
+
+${customRegion}
 }

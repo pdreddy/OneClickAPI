@@ -1,0 +1,174 @@
+package ${classPackageName};
+
+<#if applicationClass??>
+import ${applicationClass};
+</#if>
+<#list setupImports as i>
+import ${i};
+</#list>
+<#if persists>
+import ${persistencePkg}.EntityManager;
+</#if>
+import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+<#if boot4>
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+<#else>
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+</#if>
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * Full-stack test of the ${className} API: real controller, service, repository and an in-memory H2 database
+ * (replacing the configured datasource for this test only). Each test runs in a transaction that is rolled back.
+ */
+@SpringBootTest(<#if applicationClass??>classes = ${applicationSimple}.class, </#if>properties = {
+        "spring.datasource.url=jdbc:h2:mem:oneclickapi-test;DB_CLOSE_DELAY=-1",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.liquibase.enabled=false",
+        "spring.flyway.enabled=false",
+        "spring.sql.init.mode=never"
+})
+@AutoConfigureMockMvc
+@Transactional
+class ${className}ApiIntegrationTest {
+
+    private static final String URL = "${basePath}";
+
+    @Autowired
+    private MockMvc mockMvc;
+<#if persists>
+
+    @Autowired
+    private EntityManager entityManager;
+</#if>
+
+    private MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request) {
+        return request<#if versionHeader??>.header("${versionHeader}", "${apiVersion}")</#if>.contentType(MediaType.APPLICATION_JSON);
+    }
+
+    /** A valid request body; rows it refers to are created first. */
+    private String validRequest() {
+<#list setup as line>
+        ${line}
+</#list>
+        return ${body};
+    }
+
+    private String createAndReturnBody() throws Exception {
+        return mockMvc.perform(json(post(URL)).content(validRequest()))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private Object create() throws Exception {
+        return JsonPath.read(createAndReturnBody(), "${itemPath}${idName}");
+    }
+
+    @Test
+    void create_thenFindById_returnsStoredValues() throws Exception {
+        Object id = create();
+
+        mockMvc.perform(json(get(URL + "/{id}", id)))
+                .andExpect(status().isOk())
+<#list checks as c>
+                .andExpect(jsonPath("${itemPath}${c.name}").value(${c.value}))
+</#list>
+                .andExpect(jsonPath("${itemPath}${idName}").value(id));
+    }
+
+    @Test
+    void findAll_containsCreated() throws Exception {
+        create();
+
+        mockMvc.perform(json(get(URL)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${listPath}${idName}").exists());
+    }
+
+<#if filters?has_content || search?? || sortBy??>
+    @Test
+    void findAll_withFiltersSearchAndSort_findsCreated() throws Exception {
+        String created = createAndReturnBody();
+        Object id = JsonPath.read(created, "${itemPath}${idName}");
+
+        mockMvc.perform(json(get(URL))
+<#list filters as f>
+<#if f.fromResponse>
+                        .param("${f.name}", String.valueOf((Object) JsonPath.read(created, "${itemPath}${f.name}")))
+<#else>
+                        .param("${f.name}", "${f.value}")
+</#if>
+</#list>
+<#if search??>
+                        .param("q", "${search}")
+</#if>
+<#if sortBy??>
+                        .param("sort", "${sortBy},desc")
+</#if>
+                        .param("page", "0")
+                        .param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${listPath}${idName}").value(id));
+    }
+
+<#if search??>
+    @Test
+    void findAll_withNonMatchingSearch_returnsEmptyPage() throws Exception {
+        create();
+
+        mockMvc.perform(json(get(URL)).param("q", "no-such-value-oneclickapi"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${listContentPath}").isEmpty());
+    }
+
+</#if>
+</#if>
+    @Test
+    void update_returnsOk() throws Exception {
+        Object id = create();
+
+        mockMvc.perform(json(put(URL + "/{id}", id)).content(validRequest()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("${itemPath}${idName}").value(id));
+    }
+
+    @Test
+    void delete_thenFindById_returnsNotFound() throws Exception {
+        Object id = create();
+
+        mockMvc.perform(json(delete(URL + "/{id}", id)))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(json(get(URL + "/{id}", id)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void findById_whenMissing_returnsNotFound() throws Exception {
+        mockMvc.perform(json(get(URL + "/{id}", ${missingId})))
+                .andExpect(status().isNotFound());
+    }
+<#if hasRequiredFields>
+
+    @Test
+    void create_withEmptyBody_returnsBadRequest() throws Exception {
+        mockMvc.perform(json(post(URL)).content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+</#if>
+}

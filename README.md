@@ -6,11 +6,6 @@ Generate complete REST APIs with advanced data management capabilities directly 
 **@Entity-annotated or POJO classes** with just a few clicks. 
 Select multiple classes at once and generate hundreds or even thousands of APIs in seconds!
 
-
-> **Free and open source (Apache-2.0).** One right-click: `Entity` → DTOs, Mapper, Repository, Service, Controller.
-
-![demo](./docs/demo.gif) <!-- add screenshot/GIF here -->
-
 ---
 
 ## Installation
@@ -32,10 +27,10 @@ Select multiple classes at once and generate hundreds or even thousands of APIs 
 ## How It Works
 
 1. **Install the plugin** and open your Spring Boot project.
-2. **Select an** `@Entity` **or POJO class**.
-3. Choose **New → Generate API** (or **Code → Generate → Generate API**, ⌘N / Alt+Insert).
+2. **Right-click on any** `@Entity` **or POJO class**.
+3. Select **"Generate API"** from the context menu.
 4. **Configure API options** (enable file upload, DTOs, Liquibase, etc.).
-5. Click **Generate**, and get **production-ready APIs** instantly!
+5. Click **Preview**, check the files and the diff, then **Generate**, and get **production-ready APIs** instantly!
 
 ---
 
@@ -52,9 +47,14 @@ Select multiple classes at once and generate hundreds or even thousands of APIs 
 ✅ **Advanced global exception handling** with auto-generated error controllers  
 ✅ **Multi-Class Selection:** Generate APIs for hundreds of classes simultaneously  
 ✅ **MyBatis Support:** Generate APIs from both POJO and `@Entity` classes  
-✅ **Liquibase Flexibility:** Generate database schemas in **YAML or XML**  
+✅ **Liquibase:** Generate database changelogs in **XML or YAML**  
 ✅ **Highly customizable templates** for project-specific API generation  
-✅ **Boosted productivity:** Reduces repetitive tasks, letting developers focus on business logic
+✅ **Boosted productivity:** Reduces repetitive tasks, letting developers focus on business logic  
+✅ **Preview Before Generate:** see every file and a diff first; nothing is written until you confirm  
+✅ **Safe re-generation:** Skip / Replace / Merge per file, custom-code regions are preserved, with a report  
+✅ **Tests, `.http` files and OpenAPI** generated with the backend: service, controller, mapper and full-stack API tests (H2)  
+✅ **API standards:** validation, pagination/search, standard responses and errors, soft delete, audit fields, versioning, relations as ids  
+✅ **Team presets** in `.oneclickapi.yml` and **automatic project detection** (Maven/Gradle, Boot version, JPA/MyBatis, MapStruct, Lombok, Liquibase/Flyway)
 
 ---
 
@@ -65,6 +65,8 @@ For more details, check the following documentation files:
 - **[INSTALLATION.md](./docs/INSTALLATION.md)** → Step-by-step guide for installing and setting up the plugin.
 - **[FEATURES.md](./docs/FEATURES.md)** → Detailed explanation of the plugin's key functionalities.
 - **[USAGE.md](./docs/USAGE.md)** → How to use the plugin effectively.
+- **[PRESETS.md](./docs/PRESETS.md)** → Team presets and the `.oneclickapi.yml` file.
+- **[TECHNICAL_DOCUMENTATION.md](./docs/TECHNICAL_DOCUMENTATION.md)** → How the plugin is built.
 - **[LICENSE.md](./docs/LICENSE.md)** → License and usage terms.
 
 ---
@@ -82,7 +84,8 @@ For more details, check the following documentation files:
 
 ## License
 
-OneClickAPI is free and open source under the [Apache License 2.0](./LICENSE). Copyright 2026 Damodhara Reddy Palavali.
+This plugin is licensed under the terms specified in **[LICENSE.md](./docs/LICENSE.md)**.
+
 ---
 
 ## Support & Contributions

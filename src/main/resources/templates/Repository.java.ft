@@ -1,0 +1,12 @@
+package ${classPackageName};
+
+import ${repositoryImport};
+<#if pagination>
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+</#if>
+import ${entityFqn};
+
+public interface ${className}Repository extends ${repositoryType}<${className}, ${idType}><#if pagination>, JpaSpecificationExecutor<${className}></#if> {
+
+${customRegion}
+}
