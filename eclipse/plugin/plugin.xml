@@ -10,10 +10,22 @@
       </command>
    </extension>
 
+   <extension point="org.eclipse.ui.commands">
+      <command
+            id="damu.plugin.oneclickapi.eclipse.generateTests"
+            name="Generate Tests Only (OneClickAPI)..."
+            description="Generates only the test classes for the selected class, for code that is already in the project">
+      </command>
+   </extension>
+
    <extension point="org.eclipse.ui.handlers">
       <handler
             class="damu.plugin.oneclickapi.eclipse.ui.GenerateApiHandler"
             commandId="damu.plugin.oneclickapi.eclipse.generate">
+      </handler>
+      <handler
+            class="damu.plugin.oneclickapi.eclipse.ui.GenerateTestsHandler"
+            commandId="damu.plugin.oneclickapi.eclipse.generateTests">
       </handler>
    </extension>
 
@@ -61,6 +73,30 @@
          <command
                commandId="damu.plugin.oneclickapi.eclipse.generate"
                icon="icons/generate.png"
+               style="push">
+         </command>
+      </menuContribution>
+      <menuContribution
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?after=additions">
+         <command
+               commandId="damu.plugin.oneclickapi.eclipse.generateTests"
+               style="push">
+            <visibleWhen checkEnabled="false">
+               <with variable="activeMenuSelection">
+                  <iterate ifEmpty="false" operator="or">
+                     <or>
+                        <instanceof value="org.eclipse.jdt.core.ICompilationUnit"/>
+                        <instanceof value="org.eclipse.jdt.core.IType"/>
+                     </or>
+                  </iterate>
+               </with>
+            </visibleWhen>
+         </command>
+      </menuContribution>
+      <menuContribution
+            locationURI="popup:#CompilationUnitEditorContext?after=additions">
+         <command
+               commandId="damu.plugin.oneclickapi.eclipse.generateTests"
                style="push">
          </command>
       </menuContribution>

@@ -3,9 +3,11 @@ package damu.plugin.oneclickapi.eclipse
 import damu.plugin.oneclickapi.core.model.EntityModel
 import damu.plugin.oneclickapi.core.options.ConflictPolicy
 import damu.plugin.oneclickapi.core.options.GenerationOptions
+import damu.plugin.oneclickapi.core.options.TestOptions
 import damu.plugin.oneclickapi.core.plan.DuplicateClasses
 import damu.plugin.oneclickapi.core.plan.FileKind
 import damu.plugin.oneclickapi.core.plan.PlannedFile
+import damu.plugin.oneclickapi.core.plan.Plan
 import damu.plugin.oneclickapi.core.plan.Planner
 import damu.plugin.oneclickapi.core.plan.TemplateEngine
 import damu.plugin.oneclickapi.core.preset.Preset
@@ -60,10 +62,37 @@ class ApiGenerator @JvmOverloads constructor(
     /** [options] with the keys of [values] applied on top. */
     fun refine(options: GenerationOptions, values: Map<String, Any?>): GenerationOptions = PresetCodec.apply(options, values)
 
-    fun prepare(models: List<EntityModel>, options: GenerationOptions): Prepared {
-        val plan = Planner(profile, TemplateEngine(templateDir), files::exists).plan(models, options)
-        val warnings = plan.warnings.toMutableList()
-        val duplicates = DuplicateClasses.check(plan.files, existingJavaPaths)
+    /** Options that generate only the chosen test classes: no CRUD code, the test types ticked. */
+    fun testsOnlyOptions(
+        basePackage: String,
+        service: Boolean,
+        controller: Boolean,
+        mapper: Boolean,
+        integration: Boolean,
+        http: Boolean
+    ): GenerationOptions = GenerationOptions(
+        basePackage = basePackage,
+        crud = false,
+        tests = TestOptions(
+            serviceTests = service,
+            controllerTests = controller,
+            mapperTests = mapper,
+            integrationTests = integration,
+            httpFile = http
+        )
+    )
+
+    fun prepare(models: List<EntityModel>, options: GenerationOptions): Prepared =
+        prepare(models, options) { planner -> planner.plan(models, options) }
+
+    /** The test classes only; see [Planner.planTests]. */
+    fun prepareTests(models: List<EntityModel>, options: GenerationOptions): Prepared =
+        prepare(models, options) { planner -> planner.planTests(models, options) }
+
+    private fun prepare(models: List<EntityModel>, options: GenerationOptions, plan: (Planner) -> Plan): Prepared {
+        val planned = plan(Planner(profile, TemplateEngine(templateDir), files::exists))
+        val warnings = planned.warnings.toMutableList()
+        val duplicates = DuplicateClasses.check(planned.files, existingJavaPaths)
         warnings += duplicates.warnings
         val all = duplicates.files.toMutableList()
         addDependencyEdit(models, options, all, warnings)

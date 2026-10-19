@@ -47,7 +47,12 @@ import damu.plugin.oneclickapi.eclipse.jdt.JdtModelReader;
 import damu.plugin.oneclickapi.eclipse.jdt.ProjectScanner;
 
 /** Entry point of the "Generate API (OneClickAPI)..." command: collect classes, ask, preview, write, report. */
-public final class GenerateApiHandler extends AbstractHandler {
+public class GenerateApiHandler extends AbstractHandler {
+
+    /** {@code true} in the "tests only" command: generates the test classes of the selected classes and nothing else. */
+    protected boolean testsOnly() {
+        return false;
+    }
 
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -101,34 +106,48 @@ public final class GenerateApiHandler extends AbstractHandler {
         }
         String defaultPackage = commonPackage(types);
 
-        GenerateApiDialog dialog = new GenerateApiDialog(shell, generator, names.toString(), defaultPackage);
-        if (dialog.open() != GenerateApiDialog.OK) {
-            return;
+        GenerationOptions options;
+        boolean preview;
+        if (testsOnly()) {
+            TestsOnlyDialog dialog = new TestsOnlyDialog(shell, names.toString(), defaultPackage);
+            if (dialog.open() != TestsOnlyDialog.OK) {
+                return;
+            }
+            options = generator.testsOnlyOptions(dialog.basePackage(), dialog.service(), dialog.controller(),
+                dialog.mapper(), dialog.integration(), dialog.http());
+            preview = dialog.wantsPreview();
+        } else {
+            GenerateApiDialog dialog = new GenerateApiDialog(shell, generator, names.toString(), defaultPackage);
+            if (dialog.open() != GenerateApiDialog.OK) {
+                return;
+            }
+            options = dialog.options();
+            preview = dialog.wantsPreview();
         }
-        GenerationOptions options = dialog.options();
 
         Prepared prepared;
         try {
-            prepared = generator.prepare(models, options);
+            prepared = testsOnly() ? generator.prepareTests(models, options) : generator.prepare(models, options);
         } catch (RuntimeException ex) {
             MessageDialog.openError(shell, "OneClickAPI", "Could not prepare the files: " + ex.getMessage());
             return;
         }
 
         Set<String> excluded = Set.of();
-        if (dialog.wantsPreview()) {
-            PreviewDialog preview = new PreviewDialog(shell, generator.resolve(prepared, options), prepared.getWarnings());
-            if (preview.open() != PreviewDialog.OK) {
+        if (preview) {
+            PreviewDialog previewDialog = new PreviewDialog(shell, generator.resolve(prepared, options), prepared.getWarnings());
+            if (previewDialog.open() != PreviewDialog.OK) {
                 return;
             }
-            excluded = preview.excludedPaths();
+            excluded = previewDialog.excludedPaths();
         }
 
         Set<String> skip = excluded;
+        GenerationOptions chosen = options;
         Job job = new Job("OneClickAPI: generating " + names) {
             @Override
             protected IStatus run(IProgressMonitor monitor) {
-                GenerationReport report = generator.execute(prepared, options, skip);
+                GenerationReport report = generator.execute(prepared, chosen, skip);
                 try {
                     project.refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
                 } catch (Exception ignored) {

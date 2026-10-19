@@ -91,6 +91,58 @@ class Planner(
         return Plan(files.values.toList(), warnings.distinct())
     }
 
+    /**
+     * Only the test classes of [entities], for code that is already in the project. A test needs the class it
+     * tests and the classes it builds on; one that is missing is reported as a warning, the test is still planned.
+     */
+    fun planTests(entities: List<EntityModel>, o: GenerationOptions): Plan {
+        val files = mutableListOf<PlannedFile>()
+        val warnings = mutableListOf<String>()
+        val tests = GeneratedTests(profile, entities.associateBy { it.fqn })
+
+        for (entity in entities) {
+            val c = EntityContext(entity, o, profile)
+            warnings += c.warnings
+            fun need(pkg: String, name: String, forTest: String) {
+                if (!exists(javaPath(pkg, name))) {
+                    warnings += "${c.name}: $name.java is not in the project, so $forTest will not compile until it is added."
+                }
+            }
+            val servicePkg = c.pkg(o.layout.service)
+            val controllerPkg = c.pkg(o.layout.controller)
+            val mapperPkg = c.pkg(o.layout.mapper)
+
+            if (o.tests.serviceTests) {
+                need(servicePkg, "${c.name}Service", "${c.name}ServiceTest")
+                files += serviceTest(c)
+            }
+            if (o.tests.controllerTests) {
+                need(controllerPkg, "${c.name}Controller", "${c.name}ControllerTest")
+                files += controllerTest(c)
+            }
+            if (o.tests.mapperTests) {
+                need(mapperPkg, c.dtoMapperName, "${c.dtoMapperName}Test")
+                need(c.requestPkg, "${c.name}Request", "${c.dtoMapperName}Test")
+                need(c.responsePkg, "${c.name}Response", "${c.dtoMapperName}Test")
+                files += mapperTest(c, tests)
+            }
+            if (o.tests.integrationTests) {
+                if (!c.isJpa) warnings += "${c.name}: the full-stack API test is only generated for JPA entities."
+                else when (val api = tests.apiModel(c)) {
+                    is GeneratedTests.Api.Ok -> {
+                        need(controllerPkg, "${c.name}Controller", "${c.name}ApiIntegrationTest")
+                        files += apiTest(c, api.model)
+                    }
+                    is GeneratedTests.Api.Skipped -> warnings += "${c.name}: full-stack API test skipped - ${api.reason}."
+                }
+            }
+            if (o.tests.httpFile) files += http(c)
+        }
+
+        if (files.isEmpty()) warnings += "No test type is selected, so nothing is generated."
+        return Plan(files, warnings.distinct())
+    }
+
     // ------------------------------------------------------------------------------------------ helpers
 
     private fun javaPath(pkg: String, name: String, test: Boolean = false): String =

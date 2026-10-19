@@ -83,4 +83,35 @@ class ApiGeneratorTest {
         val refined = generator.refine(base, mapOf("standards" to mapOf("pagination" to "true")))
         assertTrue(refined.standards.pagination)
     }
+    @Test
+    fun `tests only plans test classes and no application code`() {
+        val files = MemoryFiles()
+        val generator = ApiGenerator(files, emptyMap(), emptyList(), null, emptyList())
+        val options = generator.testsOnlyOptions("com.acme.shop", service = true, controller = false, mapper = false, integration = false, http = false)
+        val prepared = generator.prepareTests(listOf(ModelFactory.build(book())), options)
+
+        val paths = prepared.files.map { it.path }
+        assertEquals(listOf("src/test/java/com/acme/shop/service/BookServiceTest.java"), paths)
+    }
+
+    @Test
+    fun `tests only warns when the class under test is missing`() {
+        val files = MemoryFiles()
+        val generator = ApiGenerator(files, emptyMap(), emptyList(), null, emptyList())
+        val options = generator.testsOnlyOptions("com.acme.shop", service = true, controller = false, mapper = false, integration = false, http = false)
+        val prepared = generator.prepareTests(listOf(ModelFactory.build(book())), options)
+
+        assertTrue(prepared.warnings.any { it.contains("BookService.java is not in the project") })
+    }
+
+    @Test
+    fun `tests only uses the classes that already exist`() {
+        val servicePath = "src/main/java/com/acme/shop/service/BookService.java"
+        val files = MemoryFiles(mapOf(servicePath to "package com.acme.shop.service;"))
+        val generator = ApiGenerator(files, emptyMap(), emptyList(), null, emptyList())
+        val options = generator.testsOnlyOptions("com.acme.shop", service = true, controller = false, mapper = false, integration = false, http = false)
+        val prepared = generator.prepareTests(listOf(ModelFactory.build(book())), options)
+
+        assertTrue(prepared.warnings.none { it.contains("is not in the project") })
+    }
 }
