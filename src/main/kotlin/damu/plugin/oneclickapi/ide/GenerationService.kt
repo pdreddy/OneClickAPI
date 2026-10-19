@@ -1,6 +1,7 @@
 package damu.plugin.oneclickapi.ide
 
 import damu.plugin.oneclickapi.core.model.EntityModel
+import damu.plugin.oneclickapi.runRead
 import damu.plugin.oneclickapi.core.options.ConflictPolicy
 import damu.plugin.oneclickapi.core.options.GenerationOptions
 import damu.plugin.oneclickapi.core.plan.FileKind
@@ -16,11 +17,9 @@ import damu.plugin.oneclickapi.core.write.GenerationReport
 import damu.plugin.oneclickapi.core.write.PlanExecutor
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.ex.ActionUtil
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.externalSystem.autoimport.ExternalSystemProjectTracker
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -48,7 +47,7 @@ object GenerationService {
         }
 
         // (module directory or null, classes in it, names for the error message)
-        val groups = ReadAction.compute<List<Triple<VirtualFile?, List<PsiClass>, String>>, RuntimeException> {
+        val groups = runRead {
             classes.groupBy { ModuleLocator.baseDir(it)?.path }.map { (_, group) ->
                 Triple(ModuleLocator.baseDir(group.first()), group, group.joinToString { it.name ?: "?" })
             }
@@ -75,7 +74,7 @@ object GenerationService {
         preview: Boolean,
         projectRoot: VirtualFile?
     ): GenerationReport? {
-        val (models, profile) = ReadAction.compute<Pair<List<EntityModel>, damu.plugin.oneclickapi.core.project.ProjectProfile>, RuntimeException> {
+        val (models, profile) = runRead {
             classes.mapNotNull { PsiModelReader.read(it, moduleDir) } to ProjectScanner.scan(classes.first(), moduleDir)
         }
         val files = IdeProjectFiles(moduleDir)
@@ -115,7 +114,7 @@ object GenerationService {
     /** Clashes with classes left in other packages by an earlier run, see [DuplicateClasses]. */
     private fun dropDuplicateSharedClasses(files: List<PlannedFile>, moduleDir: VirtualFile, warnings: MutableList<String>): List<PlannedFile> {
         val existing = mutableListOf<String>()
-        ReadAction.run<RuntimeException> {
+        runRead {
             for (root in listOf("src/main/java", "src/test/java")) {
                 val dir = moduleDir.findFileByRelativePath(root) ?: continue
                 VfsUtilCore.iterateChildrenRecursively(dir, null) { f ->
@@ -129,15 +128,16 @@ object GenerationService {
         return result.files
     }
 
+    /** Saves the edited build file and asks Gradle/Maven to re-import, the same as the "Load changes" button. */
     private fun reloadBuild(project: Project) {
         ApplicationManager.getApplication().invokeLater {
-            val actions = ActionManager.getInstance()
-            val action = listOf("ExternalSystem.RefreshAllProjects", "Maven.ReimportProject")
-                .firstNotNullOfOrNull { actions.getAction(it) } ?: return@invokeLater
             try {
-                ActionUtil.invokeAction(action, SimpleDataContext.getProjectContext(project), "OneClickAPI", null, null)
+                FileDocumentManager.getInstance().saveAllDocuments()
+                val tracker = ExternalSystemProjectTracker.getInstance(project)
+                tracker.markDirtyAllProjects()
+                tracker.scheduleProjectRefresh()
             } catch (e: Exception) {
-                notify(project, "Dependencies were added; reload the Gradle/Maven project to resolve them.", NotificationType.INFORMATION)
+                notify(project, "The build file was changed; reload the Gradle/Maven project to resolve the new dependencies.", NotificationType.INFORMATION)
             }
         }
     }

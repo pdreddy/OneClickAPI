@@ -1,7 +1,6 @@
 package damu.plugin.oneclickapi
 
 import damu.plugin.oneclickapi.core.preset.PresetStore
-import damu.plugin.oneclickapi.core.project.ProjectProfile
 import damu.plugin.oneclickapi.core.write.MemoryFiles
 import damu.plugin.oneclickapi.ide.GenerateApiDialog
 import damu.plugin.oneclickapi.ide.GenerationService
@@ -12,7 +11,8 @@ import damu.plugin.oneclickapi.util.PsiUtils
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.LangDataKeys
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.Computable
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiClass
@@ -49,11 +49,11 @@ class GenerateApiAction : DumbAwareAction("Generate API") {
         val presetStore = PresetStore(projectRoot?.let { IdeProjectFiles(it) } ?: MemoryFiles())
 
         // The first class that can be generated for decides which module the info line describes.
-        val firstClass = ReadAction.compute<PsiClass?, RuntimeException> {
+        val firstClass = runRead {
             psiClasses.firstOrNull { PsiUtils.isEntityClass(it) || PsiUtils.isPojoClass(it) } ?: psiClasses.firstOrNull()
         }
         val profile = firstClass?.let { cls ->
-            ReadAction.compute<ProjectProfile?, RuntimeException> {
+            runRead {
                 ModuleLocator.baseDir(cls)?.let { dir -> ProjectScanner.scan(cls, dir) }
             }
         }
@@ -72,3 +72,7 @@ class GenerateApiAction : DumbAwareAction("Generate API") {
         )
     }
 }
+
+/** Non-deprecated read action that exists on every supported IDE (2024.2+); `ReadAction.compute` is deprecated since 2025.3. */
+internal inline fun <T> runRead(crossinline block: () -> T): T =
+    ApplicationManager.getApplication().runReadAction(Computable { block() })
