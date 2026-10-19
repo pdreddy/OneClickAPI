@@ -41,3 +41,6 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+# Eclipse plugin build output
+eclipse/**/target/
+eclipse/plugin/lib/

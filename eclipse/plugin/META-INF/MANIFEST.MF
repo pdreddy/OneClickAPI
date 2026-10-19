@@ -1,0 +1,19 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: OneClickAPI
+Bundle-SymbolicName: damu.plugin.oneclickapi.eclipse;singleton:=true
+Bundle-Version: 2.0.0.qualifier
+Bundle-Vendor: Damodhara Reddy Palavali
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.eclipse.core.resources,
+ org.eclipse.core.expressions,
+ org.eclipse.jface,
+ org.eclipse.jdt.core,
+ org.eclipse.jdt.ui
+Bundle-ClassPath: .,
+ lib/oneclickapi-core.jar,
+ lib/freemarker.jar,
+ lib/kotlin-stdlib.jar

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension point="org.eclipse.ui.commands">
+      <command
+            id="damu.plugin.oneclickapi.eclipse.generate"
+            name="Generate API (OneClickAPI)..."
+            description="Generates DTOs, mapper, repository, service and REST controller for the selected entity or POJO">
+      </command>
+   </extension>
+
+   <extension point="org.eclipse.ui.handlers">
+      <handler
+            class="damu.plugin.oneclickapi.eclipse.ui.GenerateApiHandler"
+            commandId="damu.plugin.oneclickapi.eclipse.generate">
+      </handler>
+   </extension>
+
+   <extension point="org.eclipse.ui.menus">
+      <!-- Package Explorer and Project Explorer: right-click on classes, packages or whole projects -->
+      <menuContribution
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?after=additions">
+         <command
+               commandId="damu.plugin.oneclickapi.eclipse.generate"
+               icon="icons/generate.png"
+               style="push">
+            <visibleWhen checkEnabled="false">
+               <with variable="activeMenuSelection">
+                  <iterate ifEmpty="false" operator="or">
+                     <or>
+                        <instanceof value="org.eclipse.jdt.core.ICompilationUnit"/>
+                        <instanceof value="org.eclipse.jdt.core.IType"/>
+                     </or>
+                  </iterate>
+               </with>
+            </visibleWhen>
+         </command>
+      </menuContribution>
+      <menuContribution
+            locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu?after=additions">
+         <command
+               commandId="damu.plugin.oneclickapi.eclipse.generate"
+               icon="icons/generate.png"
+               style="push">
+            <visibleWhen checkEnabled="false">
+               <with variable="activeMenuSelection">
+                  <iterate ifEmpty="false" operator="or">
+                     <or>
+                        <instanceof value="org.eclipse.jdt.core.ICompilationUnit"/>
+                        <instanceof value="org.eclipse.jdt.core.IType"/>
+                     </or>
+                  </iterate>
+               </with>
+            </visibleWhen>
+         </command>
+      </menuContribution>
+      <!-- Java editor: right-click inside the class -->
+      <menuContribution
+            locationURI="popup:#CompilationUnitEditorContext?after=additions">
+         <command
+               commandId="damu.plugin.oneclickapi.eclipse.generate"
+               icon="icons/generate.png"
+               style="push">
+         </command>
+      </menuContribution>
+   </extension>
+
+   <extension point="org.eclipse.ui.bindings">
+      <key
+            commandId="damu.plugin.oneclickapi.eclipse.generate"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="M1+M2+M3+G">
+      </key>
+   </extension>
+
+</plugin>

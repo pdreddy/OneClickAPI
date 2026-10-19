@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature id="damu.plugin.oneclickapi.eclipse.feature"
+         label="OneClickAPI"
+         version="2.0.0.qualifier"
+         provider-name="Damodhara Reddy Palavali">
+
+   <description>
+      Generates DTOs, mapper, repository, service, REST controller, tests and OpenAPI files for a JPA entity or POJO in one click.
+   </description>
+
+   <copyright>
+      Copyright Damodhara Reddy Palavali
+   </copyright>
+
+   <license url="https://www.apache.org/licenses/LICENSE-2.0">
+      Apache License, Version 2.0
+   </license>
+
+   <plugin id="damu.plugin.oneclickapi.eclipse" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+
+</feature>
