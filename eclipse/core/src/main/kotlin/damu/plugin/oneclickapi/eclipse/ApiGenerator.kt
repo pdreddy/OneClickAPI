@@ -3,6 +3,8 @@ package damu.plugin.oneclickapi.eclipse
 import damu.plugin.oneclickapi.core.model.EntityModel
 import damu.plugin.oneclickapi.core.options.ConflictPolicy
 import damu.plugin.oneclickapi.core.options.GenerationOptions
+import damu.plugin.oneclickapi.core.options.LiquibaseFormat
+import damu.plugin.oneclickapi.core.options.LiquibaseOptions
 import damu.plugin.oneclickapi.core.options.TestOptions
 import damu.plugin.oneclickapi.core.plan.DuplicateClasses
 import damu.plugin.oneclickapi.core.plan.FileKind
@@ -55,6 +57,20 @@ class ApiGenerator @JvmOverloads constructor(
     /** [GenerationOptions] for [basePackage] with the keys of [values] (the `.oneclickapi.yml` keys) applied. */
     fun options(basePackage: String, values: Map<String, Any?>): GenerationOptions =
         PresetCodec.apply(GenerationOptions(basePackage = basePackage), values)
+
+    /** Liquibase changelog settings from the dialog; null when the changelog is not wanted. */
+    fun liquibase(enabled: Boolean, packagePath: String, fileName: String, yaml: Boolean): LiquibaseOptions? =
+        if (!enabled) null
+        else LiquibaseOptions(packagePath, fileName, if (yaml) LiquibaseFormat.YAML else LiquibaseFormat.XML)
+
+    /** [options] with the dialog-only features set: the Liquibase changelog and the upload APIs. */
+    fun withFeatures(options: GenerationOptions, liquibase: LiquibaseOptions?, imageUpload: Boolean, pdfUpload: Boolean): GenerationOptions =
+        options.copy(liquibase = liquibase, imageUpload = imageUpload, pdfUpload = pdfUpload)
+
+    /** Stores [values] as a preset in `.oneclickapi.yml` of the project. */
+    fun savePreset(name: String, values: Map<String, Any?>, makeDefault: Boolean) {
+        PresetStore(files).save(name, "", values, makeDefault)
+    }
 
     /** The `.oneclickapi.yml` keys of [options]; the dialog shows these and hands changed ones back to [refine]. */
     fun values(options: GenerationOptions): Map<String, Any?> = PresetCodec.toValues(options)

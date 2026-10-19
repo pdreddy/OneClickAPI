@@ -1,11 +1,16 @@
 package damu.plugin.oneclickapi.eclipse.ui;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.dialogs.InputDialog;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -19,45 +24,47 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import damu.plugin.oneclickapi.core.options.GenerationOptions;
+import damu.plugin.oneclickapi.core.options.LiquibaseFormat;
+import damu.plugin.oneclickapi.core.options.LiquibaseOptions;
 import damu.plugin.oneclickapi.core.preset.Preset;
 import damu.plugin.oneclickapi.eclipse.ApiGenerator;
 
-/** Options dialog: a preset sets the starting point, the check boxes below refine it. */
+/** Options dialog: a preset sets the starting point, the controls below refine it. Same options as the IntelliJ dialog. */
 final class GenerateApiDialog extends Dialog {
 
-    /** One check box: label, path of the {@code .oneclickapi.yml} key (a/b = key b inside map a). */
+    /** One check box: label, and the {@code .oneclickapi.yml} key (a/b = key b inside map a). */
     private record Flag(String label, String key) {
     }
 
     private static final Flag[] GENERAL = {
         new Flag("Lombok on generated classes", "lombok"),
-        new Flag("Exception handler", "exceptionHandling"),
+        new Flag("Global exception handling", "exceptionHandling"),
     };
     private static final Flag[] STANDARDS = {
         new Flag("Bean Validation constraints", "standards/validation"),
-        new Flag("Pagination, filter and search", "standards/pagination"),
+        new Flag("Pagination, sorting, filtering and search", "standards/pagination"),
         new Flag("Standard response envelope (ApiResult / ApiError)", "standards/standardResponse"),
-        new Flag("Soft delete", "standards/softDelete"),
+        new Flag("Soft delete (adds a 'deleted' field to the entity)", "standards/softDelete"),
         new Flag("Audit fields (createdAt / updatedAt)", "standards/auditFields"),
-        new Flag("Expose relations as ids in DTOs", "standards/relationDtos"),
+        new Flag("Expose relations as ids (no circular DTOs)", "standards/relationDtos"),
     };
     private static final Flag[] TESTS = {
-        new Flag("Service tests", "tests/service"),
-        new Flag("Controller tests (MockMvc)", "tests/controller"),
-        new Flag("Mapper tests", "tests/mapper"),
-        new Flag("Full-stack API tests (H2)", "tests/integration"),
+        new Flag("Service tests (JUnit 5 + Mockito)", "tests/service"),
+        new Flag("Controller tests (JUnit 5 + MockMvc)", "tests/controller"),
+        new Flag("Mapper tests (entity <-> DTO, relation ids)", "tests/mapper"),
+        new Flag("Full-stack API tests (H2, JPA entities only)", "tests/integration"),
         new Flag("HTTP request file", "tests/http"),
         new Flag("JaCoCo coverage report", "tests/coverage"),
     };
     private static final Flag[] OPENAPI = {
-        new Flag("Springdoc annotations", "openApi/annotations"),
-        new Flag("OpenAPI YAML per entity", "openApi/spec"),
-        new Flag("OpenApiConfig bean", "openApi/config"),
+        new Flag("Springdoc / OpenAPI annotations", "openApi/annotations"),
+        new Flag("OpenAPI 3 spec file (YAML)", "openApi/spec"),
+        new Flag("OpenApiConfig bean (title, version)", "openApi/config"),
     };
 
     private final ApiGenerator generator;
-    private final List<Preset> presets;
-    private final String entityNames;
+    private List<Preset> presets;
+    private final List<String> classNames;
     private final String defaultPackage;
     private final Map<String, Button> boxes = new LinkedHashMap<>();
 
@@ -67,16 +74,22 @@ final class GenerateApiDialog extends Dialog {
     private Combo repository;
     private Combo converter;
     private Combo conflict;
+    private Button useLiquibase;
+    private Text liquibasePath;
+    private Text liquibaseFileName;
+    private Combo liquibaseFormat;
+    private Button imageUpload;
+    private Button pdfUpload;
     private Button preview;
 
     private GenerationOptions result;
     private boolean previewChosen = true;
 
-    GenerateApiDialog(Shell parent, ApiGenerator generator, String entityNames, String defaultPackage) {
+    GenerateApiDialog(Shell parent, ApiGenerator generator, List<String> classNames, String defaultPackage) {
         super(parent);
         this.generator = generator;
         this.presets = generator.presets();
-        this.entityNames = entityNames;
+        this.classNames = classNames;
         this.defaultPackage = defaultPackage;
     }
 
@@ -101,19 +114,22 @@ final class GenerateApiDialog extends Dialog {
 
         label(area, "Classes:");
         Label names = new Label(area, SWT.WRAP);
-        names.setText(entityNames);
+        names.setText(String.join(", ", classNames));
         names.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         label(area, "Preset:");
         presetCombo = new Combo(area, SWT.READ_ONLY | SWT.DROP_DOWN);
-        for (Preset p : presets) {
-            presetCombo.add(p.getName());
-        }
+        fillPresets();
         presetCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         presetInfo = new Label(area, SWT.WRAP);
         GridData info = new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1);
         info.widthHint = 520;
         presetInfo.setLayoutData(info);
+
+        Button save = new Button(area, SWT.PUSH);
+        save.setText("Save as Preset...");
+        save.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
+        save.addListener(SWT.Selection, e -> saveAsPreset());
 
         label(area, "Base package:");
         basePackage = new Text(area, SWT.BORDER);
@@ -139,6 +155,8 @@ final class GenerateApiDialog extends Dialog {
         group(area, "API standards", STANDARDS);
         group(area, "Tests", TESTS);
         group(area, "OpenAPI", OPENAPI);
+        liquibaseGroup(area);
+        uploadGroup(area);
 
         preview = new Button(area, SWT.CHECK);
         preview.setText("Preview files before writing");
@@ -151,6 +169,57 @@ final class GenerateApiDialog extends Dialog {
         return area;
     }
 
+    private void fillPresets() {
+        presetCombo.removeAll();
+        for (Preset p : presets) {
+            presetCombo.add(p.getName());
+        }
+    }
+
+    private void liquibaseGroup(Composite area) {
+        Group g = new Group(area, SWT.NONE);
+        g.setText("Liquibase");
+        g.setLayout(new GridLayout(2, false));
+        g.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 2, 1));
+
+        useLiquibase = new Button(g, SWT.CHECK);
+        useLiquibase.setText("Generate Liquibase changelog");
+        useLiquibase.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+        useLiquibase.addListener(SWT.Selection, e -> updateLiquibaseEnabled());
+
+        label(g, "Package path:");
+        liquibasePath = new Text(g, SWT.BORDER);
+        liquibasePath.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        label(g, "File name:");
+        liquibaseFileName = new Text(g, SWT.BORDER);
+        liquibaseFileName.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        label(g, "Format:");
+        liquibaseFormat = new Combo(g, SWT.READ_ONLY | SWT.DROP_DOWN);
+        liquibaseFormat.setItems("XML", "YAML");
+        liquibaseFormat.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+    }
+
+    private void uploadGroup(Composite area) {
+        Group g = new Group(area, SWT.NONE);
+        g.setText("Uploads");
+        g.setLayout(new GridLayout(1, false));
+        g.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 2, 1));
+        imageUpload = new Button(g, SWT.CHECK);
+        imageUpload.setText("Image upload API");
+        pdfUpload = new Button(g, SWT.CHECK);
+        pdfUpload.setText("PDF upload API");
+    }
+
+    private void updateLiquibaseEnabled() {
+        boolean on = useLiquibase.getSelection();
+        liquibasePath.setEnabled(on);
+        liquibaseFormat.setEnabled(on);
+        // A file name only makes sense for a single class; several classes get one changelog each.
+        liquibaseFileName.setEnabled(on && classNames.size() == 1);
+    }
+
     private void loadPreset() {
         Preset preset = presets.get(presetCombo.getSelectionIndex());
         presetInfo.setText(preset.getDescription());
@@ -160,21 +229,85 @@ final class GenerateApiDialog extends Dialog {
         select(repository, String.valueOf(values.get("repository")));
         select(converter, String.valueOf(values.get("converter")));
         select(conflict, String.valueOf(values.get("onConflict")));
-        presetInfo.getParent().layout(true, true);
+
+        LiquibaseOptions lb = o.getLiquibase();
+        useLiquibase.setSelection(lb != null);
+        liquibasePath.setText(lb != null ? lb.getPackagePath() : "db/changelog/" + LocalDateTime.now().getYear());
+        liquibaseFileName.setText(lb != null && !lb.getFileName().isEmpty() ? lb.getFileName() : defaultFileName());
+        select(liquibaseFormat, lb != null && lb.getFormat() == LiquibaseFormat.YAML ? "YAML" : "XML");
+        updateLiquibaseEnabled();
+
+        imageUpload.setSelection(o.getImageUpload());
+        pdfUpload.setSelection(o.getPdfUpload());
     }
 
-    @Override
-    protected void okPressed() {
-        String pkg = basePackage.getText().trim();
+    /** The changelog name for a single class, as the IntelliJ dialog suggests it: timestamp plus the class name. */
+    private String defaultFileName() {
+        if (classNames.size() != 1) {
+            return "";
+        }
+        String timestamp = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now());
+        String description = classNames.get(0).toLowerCase().replace("entity", "").trim();
+        return timestamp + "_" + description;
+    }
+
+    /** The options as the dialog currently shows them, or null if a field is not valid. */
+    private GenerationOptions currentOptions() {
+        if (useLiquibase.getSelection() && liquibasePath.getText().trim().isEmpty()) {
+            MessageDialog.openError(getShell(), "OneClickAPI", "Enter a package path for the Liquibase changelog.");
+            return null;
+        }
         Preset preset = presets.get(presetCombo.getSelectionIndex());
-        GenerationOptions o = generator.options(pkg, preset.getValues());
+        GenerationOptions o = generator.options(basePackage.getText().trim(), preset.getValues());
 
         Map<String, Object> overrides = new LinkedHashMap<>();
         boxes.forEach((key, box) -> put(overrides, key, Boolean.toString(box.getSelection())));
         overrides.put("repository", repository.getText());
         overrides.put("converter", converter.getText());
         overrides.put("onConflict", conflict.getText());
-        result = generator.refine(o, overrides);
+        GenerationOptions refined = generator.refine(o, overrides);
+
+        LiquibaseOptions lb = generator.liquibase(
+            useLiquibase.getSelection(),
+            liquibasePath.getText().trim(),
+            classNames.size() == 1 ? liquibaseFileName.getText().trim() : "",
+            "YAML".equals(liquibaseFormat.getText()));
+        return generator.withFeatures(refined, lb, imageUpload.getSelection(), pdfUpload.getSelection());
+    }
+
+    private void saveAsPreset() {
+        GenerationOptions o = currentOptions();
+        if (o == null) {
+            return;
+        }
+        InputDialog name = new InputDialog(getShell(), "Save Preset",
+            "Name of the preset. It is stored in .oneclickapi.yml in the project root so the whole team can use it.", "", null);
+        if (name.open() != Window.OK || name.getValue().trim().isEmpty()) {
+            return;
+        }
+        String presetName = name.getValue().trim();
+        boolean makeDefault = MessageDialog.openQuestion(getShell(), "Save Preset",
+            "Use '" + presetName + "' automatically whenever this dialog opens?");
+        generator.savePreset(presetName, generator.values(o), makeDefault);
+        presets = generator.presets();
+        fillPresets();
+        int index = 0;
+        for (int i = 0; i < presets.size(); i++) {
+            if (presets.get(i).getName().equals(presetName)) {
+                index = i;
+            }
+        }
+        presetCombo.select(index);
+        loadPreset();
+    }
+
+    @Override
+    protected void okPressed() {
+        GenerationOptions o = currentOptions();
+        if (o == null) {
+            return;
+        }
+        result = o;
         previewChosen = preview.getSelection();
         super.okPressed();
     }
@@ -216,9 +349,8 @@ final class GenerateApiDialog extends Dialog {
 
     @SuppressWarnings("unchecked")
     private static Object lookup(Map<String, Object> values, String key) {
-        String[] parts = key.split("/");
         Object cur = values;
-        for (String p : parts) {
+        for (String p : key.split("/")) {
             if (!(cur instanceof Map)) {
                 return null;
             }

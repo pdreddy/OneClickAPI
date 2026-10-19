@@ -18,7 +18,11 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiClass
 import com.intellij.psi.util.PsiTreeUtil
 
-class GenerateApiAction : DumbAwareAction("Generate API") {
+open class GenerateApiAction(text: String = "Generate API") : DumbAwareAction(text) {
+
+    /** Overridden by [GenerateTestsAction]: only the test classes are generated. */
+    protected open val testsOnly: Boolean get() = false
+
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
@@ -59,7 +63,7 @@ class GenerateApiAction : DumbAwareAction("Generate API") {
         }
 
         // Always open the dialog, even if no class is selected: classes can be added there.
-        val dialog = GenerateApiDialog(psiClasses, project, presetStore, profile)
+        val dialog = GenerateApiDialog(psiClasses, project, presetStore, profile, testsOnly)
         if (!dialog.showAndGet()) return
 
         GenerationService.run(
@@ -68,9 +72,15 @@ class GenerateApiAction : DumbAwareAction("Generate API") {
             contextClass = firstClass,
             options = dialog.buildOptions(),
             preview = dialog.wantsPreview(),
-            projectRoot = projectRoot
+            projectRoot = projectRoot,
+            testsOnly = testsOnly
         )
     }
+}
+
+/** "Generate Tests Only": the same dialog with the CRUD sections hidden. */
+class GenerateTestsAction : GenerateApiAction("Generate Tests Only") {
+    override val testsOnly: Boolean get() = true
 }
 
 /** Non-deprecated read action that exists on every supported IDE (2024.2+); `ReadAction.compute` is deprecated since 2025.3. */

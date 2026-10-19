@@ -36,7 +36,8 @@ object GenerationService {
         contextClass: PsiClass?,
         options: GenerationOptions,
         preview: Boolean,
-        projectRoot: VirtualFile?
+        projectRoot: VirtualFile?,
+        testsOnly: Boolean = false
     ) {
         // Features that need no class (exception handler, uploads) still need a module to write into.
         val classes = if (selected.isNotEmpty()) selected else listOfNotNull(contextClass)
@@ -58,7 +59,7 @@ object GenerationService {
                 notify(project, "Cannot find src/main/java for $names; skipped.", NotificationType.WARNING)
                 continue
             }
-            runForModule(project, group, moduleDir, effective, preview, projectRoot)?.let { reports += it }
+            runForModule(project, group, moduleDir, effective, preview, projectRoot, testsOnly)?.let { reports += it }
         }
 
         if (reports.isEmpty()) return
@@ -72,7 +73,8 @@ object GenerationService {
         moduleDir: VirtualFile,
         options: GenerationOptions,
         preview: Boolean,
-        projectRoot: VirtualFile?
+        projectRoot: VirtualFile?,
+        testsOnly: Boolean
     ): GenerationReport? {
         val (models, profile) = runRead {
             classes.mapNotNull { PsiModelReader.read(it, moduleDir) } to ProjectScanner.scan(classes.first(), moduleDir)
@@ -81,7 +83,9 @@ object GenerationService {
         val templates = projectRoot?.let { File(it.path, PresetStore.TEMPLATE_DIR) }?.takeIf { it.isDirectory }
 
         val plan = try {
-            Planner(profile, TemplateEngine(templates), files::exists).plan(models, options)
+            Planner(profile, TemplateEngine(templates), files::exists).let { planner ->
+                if (testsOnly) planner.planTests(models, options) else planner.plan(models, options)
+            }
         } catch (e: Exception) {
             notify(project, "Could not prepare the files: ${e.message}", NotificationType.ERROR)
             return null

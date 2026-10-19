@@ -106,6 +106,14 @@
             <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="NewGroup"/>
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
+        <action id="damu.plugin.oneclickapi.GenerateTestsAction"
+                class="damu.plugin.oneclickapi.GenerateTestsAction"
+                text="Generate Tests Only"
+                description="Generate only the test classes for the selected classes, for code that is already in the project">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="damu.plugin.oneclickapi.GenerateApiAction"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
     </actions>
 
     <!--     Product Descriptor for Paid Plugin -->

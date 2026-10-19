@@ -98,18 +98,19 @@ public class GenerateApiHandler extends AbstractHandler {
             templates);
 
         List<EntityModel> models = new ArrayList<>();
-        StringBuilder names = new StringBuilder();
+        List<String> classNames = new ArrayList<>();
         for (IType t : types) {
             RawClass raw = JdtModelReader.read(t, project.getFullPath());
             models.add(ModelFactory.build(raw));
-            names.append(names.length() > 0 ? ", " : "").append(t.getElementName());
+            classNames.add(t.getElementName());
         }
+        String names = String.join(", ", classNames);
         String defaultPackage = commonPackage(types);
 
         GenerationOptions options;
         boolean preview;
         if (testsOnly()) {
-            TestsOnlyDialog dialog = new TestsOnlyDialog(shell, names.toString(), defaultPackage);
+            TestsOnlyDialog dialog = new TestsOnlyDialog(shell, names, defaultPackage);
             if (dialog.open() != TestsOnlyDialog.OK) {
                 return;
             }
@@ -117,7 +118,7 @@ public class GenerateApiHandler extends AbstractHandler {
                 dialog.mapper(), dialog.integration(), dialog.http());
             preview = dialog.wantsPreview();
         } else {
-            GenerateApiDialog dialog = new GenerateApiDialog(shell, generator, names.toString(), defaultPackage);
+            GenerateApiDialog dialog = new GenerateApiDialog(shell, generator, classNames, defaultPackage);
             if (dialog.open() != GenerateApiDialog.OK) {
                 return;
             }

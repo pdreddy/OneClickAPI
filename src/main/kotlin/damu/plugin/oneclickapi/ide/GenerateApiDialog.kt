@@ -60,7 +60,9 @@ class GenerateApiDialog(
     private val project: Project,
     private val presetStore: PresetStore,
     /** Detected profile of the first class's module, for the info line; null when no class is selected. */
-    private val profile: ProjectProfile?
+    private val profile: ProjectProfile?,
+    /** "Generate Tests Only": the CRUD sections are hidden and only the selected test classes are written. */
+    private val testsOnly: Boolean = false
 ) : DialogWrapper(project, true) {
 
     private val classPathTextField = JTextField()
@@ -406,6 +408,13 @@ class GenerateApiDialog(
     }
 
     override fun doValidate(): ValidationInfo? {
+        if (testsOnly) {
+            if (classListModel.isEmpty) return ValidationInfo("Select at least one class.", addClassButton)
+            if (classPathTextField.text.isBlank()) return ValidationInfo("Class Path (target package) is required.", classPathTextField)
+            val anyTest = serviceTestsCheckBox.isSelected || controllerTestsCheckBox.isSelected || mapperTestsCheckBox.isSelected ||
+                    integrationTestsCheckBox.isSelected || httpFileCheckBox.isSelected
+            return if (anyTest) null else ValidationInfo("Tick at least one test type.")
+        }
         val somethingToGenerate = generateCrudApiCheckBox.isSelected || useLiquibaseCheckBox.isSelected ||
                 useExceptionHandlingCheckBox.isSelected || generateImageUploadApiCheckBox.isSelected || generatePdfUploadApiCheckBox.isSelected
         if (!somethingToGenerate) return ValidationInfo("Nothing selected to generate.")
@@ -455,9 +464,11 @@ class GenerateApiDialog(
 
             separator()
 
-            row("Generate CRUD API:") { cell(generateCrudApiCheckBox) }
-            row("Lombok:") { cell(useLombokCheckBox) }
-            row { cell(crudWarningLabel) }
+            if (!testsOnly) {
+                row("Generate CRUD API:") { cell(generateCrudApiCheckBox) }
+                row("Lombok:") { cell(useLombokCheckBox) }
+                row { cell(crudWarningLabel) }
+            }
 
             group("Selected Classes") {
                 row { cell(classScrollPane).align(Align.FILL) }.resizableRow()
@@ -475,19 +486,23 @@ class GenerateApiDialog(
                 cell(classPathButton)
             }
             row("Detected ORM Type:") { cell(ormTypeLabel).bold() }
-            row("Repository Type:") { cell(repositoryTypeComboBox).align(AlignX.FILL) }
-            row("Converter Type:") { cell(converterTypeComboBox).align(AlignX.FILL) }
+            if (!testsOnly) {
+                row("Repository Type:") { cell(repositoryTypeComboBox).align(AlignX.FILL) }
+                row("Converter Type:") { cell(converterTypeComboBox).align(AlignX.FILL) }
+            }
 
-            collapsibleGroup("API standards") {
-                row { cell(validationCheckBox) }
-                row { cell(paginationCheckBox) }
-                row { cell(standardResponseCheckBox) }
-                row { cell(softDeleteCheckBox) }
-                row { cell(auditFieldsCheckBox) }
-                row { cell(relationDtosCheckBox) }
-                row("API versioning:") {
-                    cell(versioningComboBox)
-                    cell(apiVersionSpinner)
+            if (!testsOnly) {
+                collapsibleGroup("API standards") {
+                    row { cell(validationCheckBox) }
+                    row { cell(paginationCheckBox) }
+                    row { cell(standardResponseCheckBox) }
+                    row { cell(softDeleteCheckBox) }
+                    row { cell(auditFieldsCheckBox) }
+                    row { cell(relationDtosCheckBox) }
+                    row("API versioning:") {
+                        cell(versioningComboBox)
+                        cell(apiVersionSpinner)
+                    }
                 }
             }
 
@@ -503,18 +518,22 @@ class GenerateApiDialog(
                 row { cell(openApiConfigCheckBox) }
             }
 
-            collapsibleGroup("Liquibase") {
-                row("Liquibase:") { cell(useLiquibaseCheckBox) }
-                row { cell(liquibaseWarningLabel) }
-                row("Package Path:") { cell(liquibasePackagePathTextField).align(AlignX.FILL) }
-                row("File Name:") { cell(liquibaseFileNameTextField).align(AlignX.FILL).resizableColumn() }
-                row("Format:") { cell(liquibaseFormatComboBox).align(AlignX.FILL) }
+            if (!testsOnly) {
+                collapsibleGroup("Liquibase") {
+                    row("Liquibase:") { cell(useLiquibaseCheckBox) }
+                    row { cell(liquibaseWarningLabel) }
+                    row("Package Path:") { cell(liquibasePackagePathTextField).align(AlignX.FILL) }
+                    row("File Name:") { cell(liquibaseFileNameTextField).align(AlignX.FILL).resizableColumn() }
+                    row("Format:") { cell(liquibaseFormatComboBox).align(AlignX.FILL) }
+                }
             }
 
-            collapsibleGroup("Other") {
-                row("Exception Handling:") { cell(useExceptionHandlingCheckBox) }
-                row("Image Upload API:") { cell(generateImageUploadApiCheckBox) }
-                row("PDF Upload API:") { cell(generatePdfUploadApiCheckBox) }
+            if (!testsOnly) {
+                collapsibleGroup("Other") {
+                    row("Exception Handling:") { cell(useExceptionHandlingCheckBox) }
+                    row("Image Upload API:") { cell(generateImageUploadApiCheckBox) }
+                    row("PDF Upload API:") { cell(generatePdfUploadApiCheckBox) }
+                }
             }
 
             separator()
@@ -554,7 +573,7 @@ class GenerateApiDialog(
                 if (liquibaseFormatComboBox.selectedItem == "YAML") LiquibaseFormat.YAML else LiquibaseFormat.XML
             )
         } else null
-        return GenerationOptions(
+        val options = GenerationOptions(
             basePackage = classPathTextField.text.trim(),
             layout = layout,
             crud = crud,
@@ -583,6 +602,8 @@ class GenerateApiDialog(
             openApi = OpenApiOptions(openApiAnnotationsCheckBox.isSelected, openApiSpecCheckBox.isSelected, openApiConfigCheckBox.isSelected),
             conflictPolicy = ConflictPolicy.entries.firstOrNull { it.label == conflictComboBox.selectedItem } ?: ConflictPolicy.SKIP
         )
+        return if (testsOnly) options.copy(crud = false, liquibase = null, exceptionHandling = false, imageUpload = false, pdfUpload = false)
+        else options
     }
 
     companion object {
