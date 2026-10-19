@@ -138,29 +138,38 @@ class PlanDumpTest {
      */
     @Test
     fun `generating again with another layout`() {
-        val profile = profile(3, 5)
-        val entities = listOf(SampleEntities.book, SampleEntities.author)
-        val first = opts(lombok = true, standards = everything, tests = allTests, docs = allDocs, exceptionHandling = true)
-        val second = first.copy(
+        val flat = opts(lombok = true, standards = everything, tests = allTests, docs = allDocs, exceptionHandling = true)
+        val layered = flat.copy(
             layout = PackageLayout(
                 controller = "web.controller", service = "application.service", repository = "infrastructure.persistence",
                 mapper = "web.mapper", persistence = "infrastructure.persistence", dto = "web.dto",
                 exception = "web.exception", config = "infrastructure.config"
             )
         )
+        // flat first, then layered: the handler stays in exception/, so its test must be there too
+        relayout("jpa-relayout", flat, layered, handlerTestIn = "com/acme/shop/exception/")
+        // layered first, then flat: the handler stays in web/exception/
+        relayout("jpa-relayout-reverse", layered, flat, handlerTestIn = "com/acme/shop/web/exception/")
+    }
+
+    private fun relayout(name: String, first: GenerationOptions, second: GenerationOptions, handlerTestIn: String) {
+        val profile = profile(3, 5)
+        val entities = listOf(SampleEntities.book, SampleEntities.author)
         val project = SampleEntities.project()
         PlanExecutor(project).execute(Planner(profile).plan(entities, first).files, { first.conflictPolicy })
 
         val plan = Planner(profile).plan(entities, second)
         val checked = DuplicateClasses.check(plan.files, project.files.keys)
-        assertTrue("old per-entity classes are reported", checked.stale.any { it.endsWith("/service/BookService.java") })
-        assertTrue("old tests are reported", checked.stale.any { it.endsWith("/service/BookServiceTest.java") })
+        assertTrue("old per-entity classes are reported", checked.stale.any { it.endsWith("Service.java") && "BookService" in it })
+        assertTrue("old tests are reported", checked.stale.any { it.endsWith("/BookServiceTest.java") })
         assertTrue("shared beans are reused", checked.files.none { it.group == "shared" && it.kind == FileKind.SOURCE })
+        val handlerTest = checked.files.single { it.fileName == "GlobalExceptionHandlerTest.java" }
+        assertTrue("handler test sits next to the reused handler: ${handlerTest.path}", handlerTest.path.contains(handlerTestIn))
         PlanExecutor(project).execute(checked.files, { second.conflictPolicy })
         checked.stale.forEach { project.files.remove(it) }
 
         val dir = System.getProperty("generated.dir")?.let(::File) ?: return
-        val target = File(dir, "jpa-relayout")
+        val target = File(dir, name)
         target.deleteRecursively()
         for ((path, text) in project.files) File(target, path).apply { parentFile.mkdirs() }.writeText(text)
         File(target, "REPORT.md").writeText(checked.warnings.joinToString("\n") { "- $it" })

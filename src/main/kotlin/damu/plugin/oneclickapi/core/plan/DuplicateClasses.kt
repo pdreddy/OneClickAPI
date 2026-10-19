@@ -30,12 +30,15 @@ object DuplicateClasses {
             moved[name] = f.packageName to PlannedFile(other, "", FileKind.SOURCE).packageName
             false
         }
-        val rewritten = if (moved.isEmpty()) kept else kept.map { f -> if (f.isJava) retarget(f, moved) else f }
+        val relocated = if (moved.isEmpty()) kept else kept.map { f -> relocateSharedTest(f, moved, kept) }
+        val rewritten = if (moved.isEmpty()) relocated else relocated.map { f -> if (f.isJava) retarget(f, moved) else f }
 
-        val stale = kept.filter { (it.kind == FileKind.SOURCE || it.kind == FileKind.TEST) && it.group != "shared" }
+        // Old copies of every generated test count, shared ones included (GlobalExceptionHandlerTest of an earlier layout
+        // no longer compiles once its handler lives elsewhere); shared main classes are reused above, never stale.
+        val stale = rewritten.filter { it.kind == FileKind.TEST || (it.kind == FileKind.SOURCE && it.group != "shared") }
             .flatMap { f ->
                 val dir = if (f.kind == FileKind.TEST) "src/test/java/" else "src/main/java/"
-                byName[f.fileName.removeSuffix(".java")].orEmpty().filter { it.contains(dir) }
+                byName[f.fileName.removeSuffix(".java")].orEmpty().filter { it.contains(dir) && it != f.path }
             }
             .distinct().sorted()
 
@@ -48,6 +51,26 @@ object DuplicateClasses {
                 "compiling: " + stale.joinToString(", ")
         )
         return Result(rewritten, warnings, stale)
+    }
+
+    /**
+     * The test of a reused shared class (GlobalExceptionHandlerTest) goes next to the class it tests, so it does not end up
+     * in a package where that class does not exist. Classes it used from its old package without an import get one.
+     */
+    private fun relocateSharedTest(f: PlannedFile, moved: Map<String, Pair<String, String>>, kept: List<PlannedFile>): PlannedFile {
+        if (f.kind != FileKind.TEST || f.group != "shared") return f
+        val subject = f.fileName.removeSuffix(".java").removeSuffix("Test")
+        val (from, to) = moved[subject] ?: return f
+        if (from == to || f.packageName != from) return f
+        var text = f.content.replaceFirst(Regex("(?m)^package [\\w.]+;"), "package $to;")
+        val leftBehind = kept.filter { it.kind == FileKind.SOURCE && it.packageName == from }.map { it.fileName.removeSuffix(".java") }
+        for (name in leftBehind) {
+            if (Regex("\\b$name\\b").containsMatchIn(text) && !text.contains("import $from.$name;")) {
+                text = text.replaceFirst(Regex("(?m)^(package [\\w.]+;[ \\t]*\\n)"), "$1\nimport $from.$name;\n")
+            }
+        }
+        val path = "src/test/java/" + to.replace('.', '/') + "/" + f.fileName
+        return f.copy(path = path, content = text)
     }
 
     private fun retarget(f: PlannedFile, moved: Map<String, Pair<String, String>>): PlannedFile {
